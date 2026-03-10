@@ -30,6 +30,7 @@ class AIOrchestrator {
         this.CHART_CMD = /\b(grafik(?:nya)?|diagram(?:nya)?|chart(?:nya)?|buatkan\s+grafik|bikin\s+grafik|tampilkan\s+grafik|buat\s+grafik|bikin\s+diagram|buatkan\s+diagram|jadikan\s+(?:grafik|grafil|gravis|grafic|graph))\b/i;
         this.EXPORT_CMD = /\b(export|unduh|download|csv|excel|ekspor|exel|xls|xlsx|jadikan\s+(?:exel|excel|escel|eksel|xs|xsl|xlsx))\b/i;
         this.EXPORT_PDF_CMD = /\b(pdf|buatkan\s+pdf|export\s+pdf|download\s+pdf|bikin\s+pdf|cetak\s+pdf|unduh\s+pdf)\b/i;
+        this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|visualisasi\s+interaktif|buka\s+dashboard|buatkan\s+dashboard|tampilkan\s+dashboard)\b/i;
 
         // Sapaan murni — cepat tanpa AI
         this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey)$/i;
@@ -99,6 +100,9 @@ class AIOrchestrator {
         // === EXPORT ===
         if (this.EXPORT_PDF_CMD.test(qLower)) {
             return { intent: 'COMMAND', command: 'EXPORT_PDF', confidence: 0.95 };
+        }
+        if (this.DASHBOARD_CMD.test(qLower)) {
+            return { intent: 'COMMAND', command: 'DASHBOARD', confidence: 0.95 };
         }
         if (this.EXPORT_CMD.test(qLower)) {
             return { intent: 'COMMAND', command: 'EXPORT', confidence: 0.95 };
@@ -174,15 +178,18 @@ KLASIFIKASI INTENT:
 
 ATURAN PENTING & SELF-HEALING:
 - Jika user mencari sesuatu yang TIDAK ADA kolomnya di Schema (misal user cari "Hobi" padahal cuma ada "Nama"), JANGAN BUAT SQL. 
-  Gunakan intent AMBIGUOUS dan tuliskan "natural_response" berupa penjelasan sopan bahwa kolom tersebut tidak ada, lalu tawarkan pencarian berdasarkan kolom yang tersedia di tabel.
 - Jika RAGU antara DATABASE_QUERY dan lainnya → PILIH DATABASE_QUERY
 - Kamu HARUS menyesuaikan nama kolom dan tebakan filter berdasarkan CONTOH DATA (Sample Rows) yang terlampir di bagian SCHEMA.
 - Bebas bahasa: Pahami bahasa gaul, singkatan, dan typo. Terjemahkan ke Indonesia baku dan taruh di 'transformed_query'.
 - PENTING (Gelar & Sapaan): JANGAN sertakan gelar (Prof, Dr, Ir, S.T, M.T, dll) atau sapaan (Pak, Bu, Bapak, Ibu) ke dalam parameter SQL LIKE, kecuali jika user secara spesifik bertanya tentang gelar. Fokuslah pada NAMA INTI untuk hasil pencarian yang lebih luas. Contoh: "Pak Bagus Endar" -> WHERE inventor LIKE '%Bagus%' AND inventor LIKE '%Endar%'.
+- PENTING (FILTER KOLOM / SLICING): Jika user hanya ingin melihat kolom tertentu (misal: "tampilkan nama dan email saja" atau "judulnya saja"), kamu WAJIB mencantumkan nama-nama kolom tersebut dalam array pada field JSON 'target_columns'. Jika user tidak membatasi, biarkan null.
 
-ATURAN SQL DINAMIS (jika intent = DATABASE_QUERY):
+ATURAN SQL & MULTI-DATABASE (jika intent = DATABASE_QUERY):
 - Selalu cocokkan nama tabel dan nama kolom persis seperti yang tertulis di Schema.
-- PENTING (PENCARIAN TEKS): JANGAN PERNAH gunakan '=' untuk mencari nama orang, judul, atau instansi. SELALU gunakan pencarian fuzzy LIKE '%kata_kunci%'. Contoh: WHERE inventor LIKE '%bismo%'.
+- PENTING (PENCARIAN LINTAS DB): Jika satu database (misal 'kekayaan_intelektual') tidak memiliki tabel yang relevan dengan pertanyaan user (misal user tanya 'siapa anggota ujicoba'), kamu HARUS mencari di database lain yang tersedia di skema. Tentukan 'database_hint' dengan nama database yang paling cocok.
+- PENTING (PENCARIAN TEKS): JANGAN PERNAH gunakan '=' untuk mencari nama orang, judul, atau instansi. SELALU gunakan pencarian fuzzy LIKE '%kata_kunci%'.
+- PENTING (AKURASI & FAKTA): Jika data tidak ditemukan atau kolom tidak ada, JANGAN berhalusinasi. Gunakan intent 'AMBIGUOUS' dan berikan penjelasan singkat di 'natural_response' tentang apa yang tersedia.
+- PENTING (JOIN QUERY): Jika user bertanya hubungan antara dua tabel dalam satu database (misal: "tampilkan anggota dan hobinya"), kamu DIPERBOLEHKAN menggunakan JOIN yang valid.
 - PENTING (FOLLOW-UP / CONTEXT INHERITANCE): Jika input user adalah pertanyaan lanjutan yang TERIKAT KUAT dengan percakapan sebelumnya (misal: "tampilkan judul-nya", "siapa saja inventornya?", "dari fakultas apa saja?", "apakah ada yang paten?") dan ada 'SQL terakhir' di data sesi, kamu WAJIB MENYALIN klausa 'WHERE' dari SQL terakhir. 
 - PENTING (NEW QUERY = JANGAN SALIN KONTEKS): JIKA input user sangat spesifik dan merupakan subjek mandiri (misal: "listkan pertahun", "berapa total paten tahun 2020", "cari nama Budi", "ada yang tentang motor?"), JANGAN copy klausa WHERE dari pertanyaan sebelumnya. Mulailah SQL dari nol. Jangan berasumsi "motor" yang dimaksud adalah milik penemu dari percakapan sebelumnya kecuali user menyuruh eksplisit.
 - PENTING (AKURASI SEARCH): Jika user mencari NAMA ORANG/INVENTOR (misal: "Harry Pragoya") dan nama tersebut dirasa typo, JANGAN mencoba mencari data lain yang tidak nyambung (seperti mencari judul atau ID acak). Tetaplah buat kueri SQL dengan NAMA TERSEBUT (LIKE '%Harry%Pragoya%'). Lebih baik sistem mengembalikan 0 hasil agar fitur "Saran Nama Mirip" kami muncul, daripada kamu memberikan data yang salah (halusinasi). JANGAN pernah memaksakan hasil jika data tidak cocok 100%.
@@ -199,7 +206,15 @@ ATURAN SQL DINAMIS (jika intent = DATABASE_QUERY):
 - JANGAN PERNAH menyertakan kalimat instruksi internal bot (seperti "AI mencari data", "Asisten membantu") di dalam 'natural_response' atau field lainnya. Jawab langsung ke inti pertanyaan.
 
 Jawab HANYA dalam JSON (tanpa markdown, tanpa backticks):
-{"intent":"DATABASE_QUERY","sql":"SELECT ...","database_hint":"nama_db","entities":{"filter_dinamis_lainnya":null},"natural_response":null,"transformed_query":"pertanyaan yang sudah diperjelas"} `;
+{
+  "intent": "DATABASE_QUERY",
+  "sql": "SELECT ...",
+  "database_hint": "nama_db",
+  "target_columns": ["kolom1", "kolom2"] | null,
+  "entities": { "filter": "nilai" },
+  "natural_response": "Pesan jika intent=CONVERSATION atau AMBIGUOUS",
+  "transformed_query": "Pertanyaan yang sudah diperjelas"
+}`;
 
         return prompt;
     }

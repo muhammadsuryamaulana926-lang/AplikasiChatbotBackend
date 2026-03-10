@@ -2567,6 +2567,402 @@
       "avgExecutionMs": 1773067189998,
       "firstSeen": 1773067189999,
       "lastSeen": 1773067189999
+    },
+    "cari data kekayaan intelektual dari pekik argo": {
+      "original": "cari data kekayaan intelektual dari Pekik Argo",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Pekik Argo%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 3,
+      "avgExecutionMs": 1773108557974,
+      "firstSeen": 1773108557975,
+      "lastSeen": 1773108557975
+    },
+    "tampilkan nama dan jenis ki dari pekik argo": {
+      "original": "tampilkan nama dan jenis ki dari pekik argo",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT id_ki, jenis_ki FROM kekayaan_intelektual WHERE inventor LIKE '%Pekik Argo%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 3,
+      "avgExecutionMs": 1773108593654,
+      "firstSeen": 1773108593654,
+      "lastSeen": 1773108593654
+    },
+    "tampilkan data ki yang terkait dengan tahun 2015": {
+      "original": "tampilkan data ki yang terkait dengan tahun 2015",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2015%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 6,
+      "avgExecutionMs": 1773108650733,
+      "firstSeen": 1773108650733,
+      "lastSeen": 1773108650733
+    },
+    "tampilkan judul dan jenis ki dari data ki yang terkait dengan tahun 2015": {
+      "original": "tampilkan judul dan jenis ki dari data ki yang terkait dengan tahun 2015",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT judul, jenis_ki FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2015%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 6,
+      "avgExecutionMs": 1773108675030,
+      "firstSeen": 1773108675030,
+      "lastSeen": 1773108675030
+    },
+    "total ki yang hak cipta": {
+      "original": "total ki yang hak cipta",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE jenis_ki = 'Hak Cipta'"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 463,
+      "avgExecutionMs": 1773108752161,
+      "firstSeen": 1773108752161,
+      "lastSeen": 1773108752161
+    },
+    "total ki yang paten dan desain industri": {
+      "original": "total ki yang paten dan desain industri",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE jenis_ki IN ('Paten', 'Desain Industri')"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 846,
+      "avgExecutionMs": 1773108783878,
+      "firstSeen": 1773108783878,
+      "lastSeen": 1773108783878
+    },
+    "tampilkan data ki dari fakultas teknologi industri dan fakultas teknologi terapan": {
+      "original": "tampilkan data ki dari fakultas teknologi industri dan fakultas teknologi terapan",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE fakultas_inventor IN ('FTI', 'FTTM') LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 90,
+      "avgExecutionMs": 1773108826234,
+      "firstSeen": 1773108826234,
+      "lastSeen": 1773108826234
+    },
+    "cari ki dari pt aering": {
+      "original": "cari ki dari pt aering",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE nama_instansi_inventor LIKE '%PT Aering%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 2,
+      "avgExecutionMs": 1773108888082,
+      "firstSeen": 1773108888082,
+      "lastSeen": 1773108888082
+    },
+    "tampilkan ki dengan no permohonan s00202409617": {
+      "original": "tampilkan ki dengan no permohonan S00202409617",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE no_permohonan LIKE '%S00202409617%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 1,
+      "avgExecutionMs": 1773109075516,
+      "firstSeen": 1773109075516,
+      "lastSeen": 1773109075516
+    },
+    "berapa ki yang mitra kepemilikan dari itb": {
+      "original": "berapa ki yang mitra kepemilikan dari itb",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE mitra_kepemilikan LIKE '%ITB%'"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 1,
+      "avgExecutionMs": 1773109175981,
+      "firstSeen": 1773109175981,
+      "lastSeen": 1773109175981
+    },
+    "ki yang mitra nya dari institut teknologi bandung ada berapa": {
+      "original": "ki yang mitra nya dari institut teknologi Bandung ada berapa",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE mitra_kepemilikan LIKE '%Institut Teknologi Bandung%'"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 1353,
+      "avgExecutionMs": 1773109281970,
+      "firstSeen": 1773109281971,
+      "lastSeen": 1773109281971
+    },
+    "liat ki yang inventornya taufan": {
+      "original": "liat ki yang inventornya Taufan",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Taufan%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 10,
+      "avgExecutionMs": 1773109644297,
+      "firstSeen": 1773109644297,
+      "lastSeen": 1773109644297
+    },
+    "tampilkan data kekayaan intelektual yang inventornya mengandung nama taufan": {
+      "original": "Tampilkan data kekayaan intelektual yang inventornya mengandung nama Taufan",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Taufan%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 10,
+      "avgExecutionMs": 1773109779463,
+      "firstSeen": 1773109779463,
+      "lastSeen": 1773109779463
+    },
+    "ada siapa saja nama anggota ujicoba": {
+      "original": "Ada siapa saja nama anggota ujicoba?",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "ujicoba"
+      ],
+      "successfulSQLs": [
+        "SELECT nama \nFROM anggota \nLIMIT 10 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 4,
+      "avgExecutionMs": 1773111410229,
+      "firstSeen": 1773111410229,
+      "lastSeen": 1773111410229
+    },
+    "tampilkan coba data nya": {
+      "original": "tampilkan coba data nya",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT DISTINCT * FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Paten%' LIMIT 10"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 628,
+      "avgExecutionMs": 1773111578719,
+      "firstSeen": 1773111578720,
+      "lastSeen": 1773111578720
+    },
+    "daftar hobi dari anggota ujicoba": {
+      "original": "daftar hobi dari anggota ujicoba",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "ujicoba"
+      ],
+      "successfulSQLs": [
+        "SELECT DISTINCT nama_hobi FROM hobi LIMIT 10 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 5,
+      "avgExecutionMs": 1773111736186,
+      "firstSeen": 1773111736187,
+      "lastSeen": 1773111736187
+    },
+    "tampilkan kan juga sama nama nama nya": {
+      "original": "tampilkan kan juga sama nama nama nya",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT DISTINCT inventor FROM kekayaan_intelektual \nWHERE jenis_ki LIKE '%Paten%' \n  AND YEAR(tgl_pendaftaran) = 2015 \nLIMIT 50 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 6,
+      "avgExecutionMs": 1773112193271,
+      "firstSeen": 1773112193271,
+      "lastSeen": 1773112193271
+    },
+    "tampilkan nama-nama inventor dari database kekayaan intelektual": {
+      "original": "tampilkan nama-nama inventor dari database kekayaan intelektual",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "itb_db"
+      ],
+      "successfulSQLs": [
+        "SELECT DISTINCT inventor FROM kekayaan_intelektual WHERE inventor IS NOT NULL AND inventor != '' LIMIT 50 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 1006,
+      "avgExecutionMs": 1773112281537,
+      "firstSeen": 1773112281537,
+      "lastSeen": 1773112281537
+    },
+    "tampilkan data anggota dari database ujicoba": {
+      "original": "tampilkan data anggota dari database ujicoba",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "ujicoba"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM anggota LIMIT 10 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 4,
+      "avgExecutionMs": 1773112409684,
+      "firstSeen": 1773112409684,
+      "lastSeen": 1773112409684
+    },
+    "tampilkan nama dan email nya s": {
+      "original": "tampilkan nama dan email nya s",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "ujicoba"
+      ],
+      "successfulSQLs": [
+        "SELECT nama, email FROM anggota LIMIT 10 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 4,
+      "avgExecutionMs": 1773112496853,
+      "firstSeen": 1773112496853,
+      "lastSeen": 1773112496853
+    },
+    "karyawan di perusahaan profesional ada siapa saja": {
+      "original": "karyawan di perusahaan profesional ada siapa saja",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "perusahaan_profesional_db"
+      ],
+      "successfulSQLs": [
+        "SELECT * FROM karyawan LIMIT 10 OFFSET 0"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 3,
+      "avgExecutionMs": 1773112772477,
+      "firstSeen": 1773112772477,
+      "lastSeen": 1773112772477
+    },
+    "berapa jumlah total karyawan di perusahaan profesional": {
+      "original": "Berapa jumlah total karyawan di perusahaan profesional?",
+      "successCount": 1,
+      "failureCount": 0,
+      "totalCount": 1,
+      "needsAttention": false,
+      "databases": [
+        "perusahaan_profesional_db"
+      ],
+      "successfulSQLs": [
+        "SELECT COUNT(*) AS total FROM karyawan"
+      ],
+      "failureReasons": [],
+      "avgResultCount": 3,
+      "avgExecutionMs": 1773112841729,
+      "firstSeen": 1773112841729,
+      "lastSeen": 1773112841729
     }
   },
   "unhandled": {},
@@ -2577,7 +2973,7 @@
       "1353": 1,
       "2011": 2,
       "2014": 4,
-      "2015": 3,
+      "2015": 5,
       "2016": 3,
       "2017": 4,
       "2018": 2,
@@ -2587,51 +2983,51 @@
       "2024": 1,
       "2025": 9,
       "2026": 2,
-      "tampilkan": 95,
-      "paten": 27,
+      "tampilkan": 106,
+      "paten": 28,
       "fmipa": 3,
-      "data": 66,
-      "judul": 7,
-      "dan": 9,
+      "data": 73,
+      "judul": 8,
+      "dan": 14,
       "nomer": 1,
-      "permohonan": 9,
-      "berapa": 20,
+      "permohonan": 10,
+      "berapa": 23,
       "banyak": 9,
       "investor": 3,
-      "kekayaan": 46,
-      "intelektual": 46,
-      "dengan": 21,
-      "jenis": 24,
+      "kekayaan": 49,
+      "intelektual": 49,
+      "dengan": 24,
+      "jenis": 26,
       "merek": 8,
-      "hak": 7,
-      "cipta": 7,
-      "nama": 3,
+      "hak": 8,
+      "cipta": 8,
+      "nama": 11,
       "instansi": 5,
-      "yang": 43,
-      "ada": 7,
-      "database": 2,
+      "yang": 51,
+      "ada": 10,
+      "database": 4,
       "statusnya": 8,
       "tersertifikasi": 1,
       "terbaru": 4,
-      "jumlah": 14,
-      "tahun": 32,
+      "jumlah": 15,
+      "tahun": 34,
       "pada": 6,
       "apa": 12,
       "bisa": 1,
       "kamu": 1,
       "berikan": 1,
       "status": 7,
-      "nya": 5,
-      "saja": 12,
+      "nya": 9,
+      "saja": 14,
       "fti": 3,
-      "daftar": 20,
-      "inventor": 16,
+      "daftar": 21,
+      "inventor": 17,
       "anugrah": 2,
       "sabdono": 2,
       "itu": 5,
       "detail": 2,
       "nomor": 9,
-      "dari": 17,
+      "dari": 27,
       "ajuan": 7,
       "saya": 1,
       "ingin": 1,
@@ -2639,18 +3035,18 @@
       "fsrd": 2,
       "ditemukan": 1,
       "sebelumnya": 1,
-      "desain": 3,
-      "industri": 3,
-      "total": 2,
+      "desain": 4,
+      "industri": 5,
+      "total": 5,
       "granted": 1,
       "diberi": 1,
       "berjenis": 1,
       "terdaftar": 2,
-      "fakultas": 3,
-      "pekik": 1,
-      "argo": 1,
+      "fakultas": 5,
+      "pekik": 3,
+      "argo": 3,
       "terdapat": 1,
-      "itb": 3,
+      "itb": 4,
       "semua": 1,
       "hitung": 4,
       "grafik": 2,
@@ -2672,12 +3068,12 @@
       "informasi": 1,
       "tentang": 2,
       "tabel": 1,
-      "ujicoba": 1,
-      "terkait": 4,
+      "ujicoba": 4,
+      "terkait": 6,
       "bismo": 5,
       "jelantik": 1,
       "didaftarkan": 2,
-      "anggota": 1,
+      "anggota": 4,
       "sate": 1,
       "madura": 1,
       "kegiatan": 1,
@@ -2693,10 +3089,10 @@
       "motor": 3,
       "pak": 1,
       "a00202000194": 8,
-      "siapa": 3,
+      "siapa": 5,
       "tanggal": 2,
       "mengenai": 1,
-      "cari": 3,
+      "cari": 5,
       "kapan": 1,
       "endar": 1,
       "milik": 1,
@@ -2705,7 +3101,7 @@
       "mencari": 1,
       "geolini": 1,
       "converter": 1,
-      "mengandung": 1,
+      "mengandung": 2,
       "huruf": 1,
       "deny": 1,
       "willy": 1,
@@ -2714,7 +3110,27 @@
       "pertahun": 1,
       "untuk": 1,
       "rentang": 1,
-      "hingga": 1
+      "hingga": 1,
+      "teknologi": 3,
+      "terapan": 1,
+      "aering": 1,
+      "s00202409617": 1,
+      "mitra": 2,
+      "kepemilikan": 1,
+      "institut": 1,
+      "bandung": 1,
+      "liat": 1,
+      "inventornya": 2,
+      "taufan": 2,
+      "coba": 1,
+      "hobi": 1,
+      "kan": 1,
+      "juga": 1,
+      "sama": 1,
+      "email": 1,
+      "karyawan": 2,
+      "perusahaan": 2,
+      "profesional": 2
     },
     "fail": {
       "yang": 3,
@@ -2724,7 +3140,7 @@
     }
   },
   "stats": {
-    "totalSuccess": 155,
+    "totalSuccess": 177,
     "totalFailure": 3,
     "totalUnhandled": 0,
     "patternsNeedingAttention": 1

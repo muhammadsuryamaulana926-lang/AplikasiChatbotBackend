@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI Dashboard - ITB AI Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --secondary: #3b82f6;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 2px solid var(--bg);
+            padding-bottom: 10px;
+            color: var(--primary);
+        }
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <div>
+                <h1 id="title">📊 Dashboard Visual - ITB AI</h1>
+                <p id="subtitle">Memuat data...</p>
+            </div>
+            <div id="stats">
+                Total Data: <span id="total-count">0</span>
+            </div>
+        </div>
+
+        <div class="grid" id="chart-container">
+            <!-- Charts will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        async function initDashboard() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const dashboardId = urlParams.get('id');
+
+            if (!dashboardId) {
+                document.body.innerHTML = '<div class="loading">❌ Dashboard ID tidak valid.</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/dashboard-data/${dashboardId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    document.body.innerHTML = `<div class="loading">❌ Error: ${result.error}</div>`;
+                    return;
+                }
+
+                const { data, title } = result;
+                document.getElementById('title').innerText = title || '📊 Dashboard Visual ITB';
+                document.getElementById('subtitle').innerText = `Data real-time dari database`;
+                document.getElementById('total-count').innerText = data.length;
+
+                renderCharts(data);
+            } catch (err) {
+                console.error(err);
+                document.body.innerHTML = '<div class="loading">❌ Gagal memuat data dari server.</div>';
+            }
+        }
+
+        function renderCharts(data) {
+            const container = document.getElementById('chart-container');
+            if (data.length === 0) return;
+
+            const columns = Object.keys(data[0]);
+            
+            // Mencari kolom kategori dan nilai
+            const categoryCols = columns.filter(c => ['jenis_ki', 'status_ki', 'fakultas', 'tahun', 'pekerjaan_inventor', 'nama_instansi'].some(k => c.toLowerCase().includes(k)));
+            
+            if (categoryCols.length === 0) {
+                container.innerHTML = '<div class="card"><h2>Info</h2><p>Data tidak mendukung visualisasi otomatis.</p></div>';
+                return;
+            }
+
+            categoryCols.forEach(col => {
+                const counts = {};
+                data.forEach(row => {
+                    const val = row[col] || 'Lainnya';
+                    counts[val] = (counts[val] || 0) + 1;
+                });
+
+                const labels = Object.keys(counts);
+                const values = Object.values(counts);
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `<h2>Distribusi Berdasarkan ${col.replace(/_/g, ' ').toUpperCase()}</h2><canvas id="chart-${col}"></canvas>`;
+                container.appendChild(card);
+
+                new Chart(document.getElementById(`chart-${col}`), {
+                    type: labels.length > 5 ? 'bar' : 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Jumlah',
+                            data: values,
+                            backgroundColor: [
+                                '#1e3a8a', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+                                '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#6366f1'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        }
+
+        initDashboard();
+    </script>
+</body>
+</html>

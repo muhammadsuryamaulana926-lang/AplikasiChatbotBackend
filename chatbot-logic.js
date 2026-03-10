@@ -392,14 +392,24 @@ class ChatbotHandler {
             break;
           case 'EXPORT_PDF':
             if (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 0) {
-              if (progressCallback) progressCallback('Menyiapkan dokumen PDF...');
-              const pdfResult = await this.generatePDFResponse(lastEntry.lastData, lastEntry.lastQuestion || q, userId, host);
-              if (pdfResult) return pdfResult;
+              if (progressCallback) progressCallback('Menyusun laporan PDF...');
+              return await this.generatePDFResponse(lastEntry.lastData, lastEntry.originalQuestion || lastEntry.lastQuestion, userId, host);
             } else if (/^(pdf|export\s+pdf|unduh\s+pdf)$/i.test(q.trim())) {
               const noPdfMsg = "Maaf, tidak ada laporan yang bisa diubah menjadi PDF. Silakan lakukan pencarian atau rekapan data terlebih dahulu.";
               this.addToContext(userId, "user", q);
               this.addToContext(userId, "assistant", noPdfMsg);
               return { type: "answer", message: noPdfMsg };
+            }
+            break;
+          case 'DASHBOARD':
+            if (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 0) {
+              if (progressCallback) progressCallback('Menyiapkan dashboard visual...');
+              return await this.generateDashboardResponse(lastEntry.lastData, lastEntry.originalQuestion || lastEntry.lastQuestion, userId, host);
+            } else if (/^(dashboard|visualisasi|buka\s+dashboard)$/i.test(q.trim())) {
+              const noDashboardMsg = "Maaf, tidak ada data sebelumnya untuk dibuatkan dashboard. Silakan lakukan pencarian data terlebih dahulu.";
+              this.addToContext(userId, "user", q);
+              this.addToContext(userId, "assistant", noDashboardMsg);
+              return { type: "answer", message: noDashboardMsg };
             }
             break;
         }
@@ -597,7 +607,7 @@ class ChatbotHandler {
           debugLog('AI_SQL_DIRECT', { sql: aiResult.sql, db: targetDb });
           return await this.handleDatabaseQuery(
             aiResult.transformed_query || q, userId, dbCatalog, lastEntry, progressCallback,
-            [targetDb], false, aiResult.sql // overrideSql!
+            [targetDb], false, aiResult.sql, aiResult.target_columns // targetColumns added!
           );
         }
       }
@@ -1179,7 +1189,7 @@ TUGAS:
   // ================================================================
   // QUERY DATABASE — INTI SISTEM
   // ================================================================
-  async handleDatabaseQuery(q, userId, dbCatalog, lastEntry, progressCallback, targetDbs = null, silent = false, overrideSql = null) {
+  async handleDatabaseQuery(q, userId, dbCatalog, lastEntry, progressCallback, targetDbs = null, silent = false, overrideSql = null, targetColumns = null) {
     const allActive = dbHelper.getAllActiveConnectionConfigs();
     const cfgs = (targetDbs && targetDbs.length > 0)
       ? allActive.filter(c => targetDbs.includes(c.database))
@@ -1414,7 +1424,7 @@ INSTRUKSI:
       }
 
       // === TAMPILKAN DATA (setelah konfirmasi atau skip) ===
-      let formatted = await this.formatResponse(q, data, database, offset, total);
+      let formatted = await this.formatResponse(q, data, database, offset, total, targetColumns);
 
       // Tambahkan ringkasan/kalimat pengantar pintar jika ini adalah halaman pertama list (LIST DATA, bukan hitungan)
       // FIX: Aktifkan untuk data banyak (>5) ATAU data tunggal (1) untuk efek conversational
@@ -1792,8 +1802,12 @@ LIMIT: ${limit}
 
 ${domainInstructions}
 
-ATURAN WAJIB SQL:
-- Gunakan LIMIT ${limit} OFFSET ${offset} kecuali untuk query agregasi/count tunggal. Jika query me-request daftar identitas (DISTINCT), gunakan MAX LIMIT 50.`;
+ATURAN WAJIB SQL (PHASE 4 - THE GRAND ANALYST EDITION):
+- Gunakan LIMIT ${limit} OFFSET ${offset} kecuali untuk query agregasi/count tunggal. Jika query me-request daftar identitas (DISTINCT), gunakan MAX LIMIT 50.
+- PENTING (FILTER KOLOM): Jika user meminta kolom spesifik (misal: "tampilkan nama saja"), hanya SELECT kolom tersebut. JANGAN SELECT * jika tidak perlu.
+- PENTING (JOIN): Jika user bertanya tentang data yang tersebar di dua tabel dalam satu database ini, kamu WAJIB menggunakan JOIN yang valid.
+- PENTING (MULTI-DB): Fokus pada tabel di database ini. Jika tabel tidak ada, jangan mengarang. Biarkan SQL kosong agar sistem mencari di database lain.
+- SELALU gunakan LIKE untuk pencarian teks/nama. JANGAN gunakan '=' untuk kolom string.`;
 
     const sql = await this.askAI(prompt, 0, 0, 0.1);
     const cleaned = this.cleanSQLQuery(sql);
@@ -1806,9 +1820,28 @@ ATURAN WAJIB SQL:
   // ================================================================
   // FORMAT RESPONSE — dinamis berdasarkan tipe data
   // ================================================================
-  async formatResponse(q, data, database, offset = 0, total = null) {
+  async formatResponse(q, data, database, offset = 0, total = null, targetColumns = null) {
     const qLower = q.toLowerCase();
     const totalData = total || data.length;
+
+    // --- DYNAMIC COLUMN SLICER (Phase 4) ---
+    // Jika user minta kolom spesifik, filter data sebelum diformat
+    if (targetColumns && Array.isArray(targetColumns) && targetColumns.length > 0 && data.length > 0) {
+      const availableColumns = Object.keys(data[0]);
+      const validColumns = targetColumns.filter(c => availableColumns.some(ac => ac.toLowerCase() === c.toLowerCase()));
+
+      if (validColumns.length > 0) {
+        data = data.map(row => {
+          const newRow = {};
+          validColumns.forEach(c => {
+            const actualKey = availableColumns.find(ac => ac.toLowerCase() === c.toLowerCase());
+            newRow[actualKey] = row[actualKey];
+          });
+          return newRow;
+        });
+        debugLog('DYNAMIC_COLUMN_SLICING_APPLIED', { requested: targetColumns, valid: validColumns });
+      }
+    }
 
     // --- COUNT result ---
     if (this.isCountResult(data)) {
@@ -2155,9 +2188,23 @@ ATURAN WAJIB SQL:
       const filename = `Laporan_KI_${Date.now()}.pdf`;
       const filepath = path.join(uploadDir, filename);
 
+      // --- LOGIC: Select most relevant columns to avoid messy layout ---
+      const allColumns = Object.keys(data[0]);
+      let targetCols = allColumns;
+
+      // Jika kolom terlalu banyak (> 7), pilih yang paling penting saja
+      if (allColumns.length > 7) {
+        const priority = ['judul', 'title', 'inventor', 'penemu', 'jenis_ki', 'kategori', 'status', 'tgl_pendaftaran', 'tanggal', 'tahun', 'fakultas'];
+        targetCols = allColumns.filter(c => priority.some(p => c.toLowerCase().includes(p))).slice(0, 7);
+        // Jika masih nol (tidak ada kolom prioritas), ambil 6 kolom pertama
+        if (targetCols.length === 0) targetCols = allColumns.slice(0, 6);
+        debugLog('PDF_COLUMN_FILTERING', { before: allColumns.length, after: targetCols.length });
+      }
+
       const doc = new PDFDocument({
-        margin: 50,
+        margin: 40,
         size: 'A4',
+        layout: targetCols.length > 5 ? 'landscape' : 'portrait', // Otomatis miring jika kolom banyak
         info: {
           Title: 'Laporan Kekayaan Intelektual ITB',
           Author: 'ITB Chatbot AI',
@@ -2167,33 +2214,36 @@ ATURAN WAJIB SQL:
       doc.pipe(fs.createWriteStream(filepath));
 
       // 1. HEADER - Blue Accent
-      doc.rect(0, 0, doc.page.width, 100).fill('#1e3a8a');
-      doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold').text('LAPORAN DATA KEKAYAAN INTELEKTUAL', 50, 40);
-      doc.fontSize(12).font('Helvetica').text('INSTITUT TEKNOLOGI BANDUNG', 50, 70);
+      const headerWidth = doc.page.width;
+      doc.rect(0, 0, headerWidth, 80).fill('#1e3a8a');
+      doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text('LAPORAN DATA KEKAYAAN INTELEKTUAL', 40, 30);
+      doc.fontSize(10).font('Helvetica').text('INSTITUT TEKNOLOGI BANDUNG', 40, 55);
 
       doc.moveDown(4);
-      doc.fillColor('#333333').fontSize(14).font('Helvetica-Bold').text(`Topik: "${originalQuestion}"`, { underline: true });
-      doc.fontSize(10).font('Helvetica').text(`Tanggal Unduh: ${new Date().toLocaleString('id-ID')}`, { align: 'right' });
-      doc.moveDown(1.5);
+      doc.fillColor('#333333').fontSize(12).font('Helvetica-Bold').text(`Topik: "${originalQuestion}"`, { underline: true });
+      doc.fontSize(9).font('Helvetica').text(`Tanggal Unduh: ${new Date().toLocaleString('id-ID')}`, { align: 'right' });
+      doc.moveDown(1);
 
-      // 2. AI SUMMARY
-      const summaryPrompt = `Buatkan ringkasan eksekutif yang profesional dan padat untuk laporan PDF berdasarkan data ini.
+      // 2. AI SUMMARY (PARAGRAPH FORMAT)
+      const summaryPrompt = `Buatkan ringkasan eksekutif yang profesional untuk laporan data ini.
       Data: ${JSON.stringify(data.slice(0, 5))}
       Total Data: ${data.length}
       Topik: "${originalQuestion}"
       
-      Aturan:
-      1. Gunakan Bahasa Indonesia formal yang elegan.
-      2. Maksimal 3-4 kalimat.
-      3. Fokus pada temuan utama.
-      4. Jangan sebutkan "AI" atau "prompt".
+      INSTRUKSI:
+      1. Tulis dalam 2-3 paragraf singkat dan padat.
+      2. Gunakan Bahasa Indonesia formal.
+      3. Fokus pada analisis tren dan statistik utama.
+      4. JANGAN gunakan bullet points, gunakan format PARAGRAF murni.
       5. JANGAN menuliskan "Berikut ringkasannya:".`;
 
       const aiSummary = await this.askAI(summaryPrompt, 0, 0, 0.4);
       if (aiSummary) {
-        doc.fillColor('#2d3748').fontSize(12).font('Helvetica-Bold').text('Ringkasan Eksekutif:', { underline: false });
-        doc.font('Helvetica').fontSize(11).text(this.stripPromptLeak(aiSummary), { align: 'justify', lineGap: 5 });
-        doc.moveDown(2);
+        doc.fillColor('#1e3a8a').fontSize(12).font('Helvetica-Bold').text('RINGKASAN EKSEKUTIF', { underline: false });
+        doc.rect(doc.x, doc.y, 100, 2).fill('#1e3a8a'); // Underline manual
+        doc.moveDown(1);
+        doc.fillColor('#2d3748').font('Helvetica').fontSize(10).text(this.stripPromptLeak(aiSummary), { align: 'justify', lineGap: 3, paragraphGap: 8 });
+        doc.moveDown(1.5);
       }
 
       // 3. CHART INJECTION
@@ -2219,7 +2269,7 @@ ATURAN WAJIB SQL:
             options: {
               plugins: {
                 title: { display: true, text: `Visualisasi ${originalQuestion.substring(0, 30)}` },
-                legend: { position: 'right' }
+                legend: { position: labels.length <= 5 ? 'right' : 'bottom' }
               }
             }
           };
@@ -2227,28 +2277,32 @@ ATURAN WAJIB SQL:
           const chartUrl = `https://quickchart.io/chart?v=3&c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=600&h=300&bkg=white`;
           const chartRes = await axios({ method: 'GET', url: chartUrl, responseType: 'arraybuffer' });
 
-          doc.image(chartRes.data, { fit: [500, 250], align: 'center' });
-          doc.moveDown(15);
+          doc.image(chartRes.data, { fit: [doc.page.width - 100, 220], align: 'center' });
+          doc.moveDown(12);
         } catch (chartErr) {
           console.error('PDF Chart Error:', chartErr);
         }
       }
 
-      // 4. DATA TABLE
-      doc.fillColor('#1e3a8a').fontSize(14).font('Helvetica-Bold').text('Rincian Data:', { underline: false });
+      // 4. DATA TABLE (CLEANED)
+      doc.addPage({ layout: 'landscape', margin: 40 }); // Tabel di halaman baru agar lega
+      doc.fillColor('#1e3a8a').fontSize(14).font('Helvetica-Bold').text('RINCIAN DATA LENGKAP', { underline: false });
       doc.moveDown(1);
 
-      const tableData = data.slice(0, 100).map(row => {
-        const cleanRow = {};
-        for (const [k, v] of Object.entries(row)) {
-          let val = v;
-          if (val && typeof val === 'string') val = val.replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '');
-          cleanRow[k] = String(val).substring(0, 80);
-        }
-        return Object.values(cleanRow);
+      const tableData = data.slice(0, 50).map(row => { // Limit 50 data untuk PDF agar tidak terlalu tebal
+        return targetCols.map(col => {
+          let val = row[col];
+          if (val === null || val === undefined) return '-';
+          if (typeof val === 'string') {
+            val = val.replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '').trim();
+            // Batasi panjang teks dalam sel
+            return val.length > 120 ? val.substring(0, 117) + '...' : val;
+          }
+          return String(val);
+        });
       });
 
-      const headers = Object.keys(data[0]).map(k => k.replace(/_/g, ' ').toUpperCase());
+      const headers = targetCols.map(k => k.replace(/_/g, ' ').toUpperCase());
 
       const table = {
         headers: headers,
@@ -2256,20 +2310,19 @@ ATURAN WAJIB SQL:
       };
 
       await doc.table(table, {
-        prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff'),
+        prepareHeader: () => doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff'),
         prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
-          doc.font('Helvetica').fontSize(8).fillColor('#333333');
-          // Alternate row coloring
+          doc.font('Helvetica').fontSize(7).fillColor('#333333');
           if (indexRow % 2 !== 0) {
-            doc.rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height).fill('#f3f4f6');
+            doc.rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height).fill('#f8fafc');
             doc.fillColor('#333333');
           }
         },
-        columnSpacing: 5,
         padding: 5,
+        columnSpacing: 5,
         divider: {
-          header: { disabled: false, width: 2, opacity: 1 },
-          horizontal: { disabled: false, width: 0.5, opacity: 0.5 }
+          header: { disabled: false, width: 1, opacity: 1, color: '#1e3a8a' },
+          horizontal: { disabled: false, width: 0.5, opacity: 0.1 }
         }
       });
 
@@ -2297,6 +2350,39 @@ ATURAN WAJIB SQL:
     } catch (e) {
       console.error('PDF Generation Error:', e);
       return { type: "answer", message: "Maaf, terjadi kesalahan saat menyusun laporan PDF." };
+    }
+  }
+
+  // ================================================================
+  // GENERATE VISUAL DASHBOARD (PHASE 5)
+  // ================================================================
+  async generateDashboardResponse(data, originalQuestion, userId, host = null) {
+    try {
+      if (!data || data.length === 0) {
+        return { type: "answer", message: "Maaf, tidak ada data untuk ditampilkan di dashboard." };
+      }
+
+      const dashboardService = require('./services/dashboard-service');
+      const dashboardId = dashboardService.saveDashboard(data, `Dashboard: ${originalQuestion}`);
+
+      // Base URL Logic
+      let baseUrl = '';
+      if (host) {
+        const isLocalIP = host.includes('localhost') || host.includes('127.0.0.1') ||
+          host.startsWith('192.168.') || host.startsWith('10.');
+        baseUrl = isLocalIP ? `http://${host}` : `https://${host}`;
+      }
+      const dashboardLink = `${baseUrl}/dashboard/index.html?id=${dashboardId}`;
+
+      const msg = `Dashboard Visual Interaktif berhasil dibuat! 📊✨\n\nMas bisa melihat analisis data secara luas dan interaktif melalui link di bawah ini.\n\n🔗 **[BUKA DASHBOARD VISUAL INTERAKTIF](${dashboardLink})**\n\n*Catatan: Dashboard ini bersifat sementara dan akan kadaluarsa dalam 24 jam.*`;
+
+      this.addToContext(userId, "user", "buatkan dashboard");
+      this.addToContext(userId, "assistant", msg);
+
+      return { type: "answer", message: msg };
+    } catch (e) {
+      console.error('Dashboard Generation Error:', e);
+      return { type: "answer", message: "Maaf, terjadi kesalahan saat menyiapkan dashboard visual." };
     }
   }
   isSimpleList(data) {
@@ -3166,12 +3252,11 @@ ${fuzzyHint ? `INFO PENTING: ${fuzzyHint}\n\n` : ''}${possibleCause ? `FAKTA DAR
 - Filter Utama: tahun, fakultas, inventor (penemu), nama instansi.
 
 TUGAS:
-1. Sampaikan bahwa data "${q}" tidak ditemukan secara JUJUR, RAMAH, dan SINGKAT.
-2. ${fuzzyHint ? `Gunakan info SARAN NAMA MIRIP di atas untuk bertanya "Apakah maksud Anda [Nama]?" secara dominan. WAJIB tuliskan nama tersebut dalam format **TEBAL**.` : (yearContext ? 'Jelaskan bahwa data yang tersedia hanya ada di rentang tahun tersebut.' : 'Jelaskan kemungkinan penyebab (misal: typo, filter terlalu spesifik, atau data penemu tersebut memang belum terdaftar).')}
-3. Berikan saran pertanyaan alternatif yang RELEVAN dengan konteks pencarian user. Jika mencari orang, sarankan cari berdasarkan fakultas/prodi yang mungkin berhubungan.
-4. JANGAN gunakan bahasa teknis AI atau database (seperti "query", "null", "SQL", "fuzzy").
-5. PENTING: Jika ada SARAN NAMA MIRIP, jangan gunakan template alasan "kesalahan penulisan" yang panjang. Langsung tawarkan nama tersebut dengan ramah.
-6. JAWAB LANGSUNG, DILARANG bertele-tele atau mengarang "kebijakan analisis". JANGAN berikan "💡 Rekomendasi Pertanyaan" jika sudah ada saran nama mirip.`;
+1. Sampaikan bahwa data "${q}" tidak ditemukan secara JUJUR, TEGAS, dan RINGKAS.
+2. JANGAN berikan penjelasan filosofis tentang kata kunci tersebut. Fokus pada FAKTA DATABASE di atas.
+3. ${fuzzyHint ? `Gunakan info SARAN NAMA MIRIP di atas untuk bertanya "Apakah maksud Anda **[Nama]**?" secara dominan.` : (yearContext ? 'Jelaskan rentang data yang tersedia di database secara teknis.' : 'Sebutkan dengan singkat kemungkinan teknis (typo atau data belum terdaftar) dan berikan saran pencarian yang lebar.')}
+4. JAWAB LANGSUNG dalam 1-2 paragraf pendek. JANGAN berikan intro panjang seperti "Dalam situasi ini...".
+5. Berikan 3 rekomendasi pertanyaan alternatif yang dijamin ada datanya berdasarkan skema yang tersedia.`;
 
     const aiResponse = await this.askAI(prompt, 0, 0, 0.4); // Lower temperature for stability
     if (aiResponse && aiResponse.length > 20) {

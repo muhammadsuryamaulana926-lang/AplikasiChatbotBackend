@@ -1,5 +1,7 @@
 {
   "activeDatabases": [
-    "itb_db"
+    "itb_db",
+    "ujicoba",
+    "perusahaan_profesional_db"
   ]
 }

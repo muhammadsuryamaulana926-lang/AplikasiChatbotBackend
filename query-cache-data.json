@@ -1,119 +1,229 @@
 {
   "cache": [
     [
-      "tampilkan daftar ki yang ada",
+      "cari data kekayaan intelektual dari pekik argo",
       {
-        "sql": "SELECT id_ki, jenis_ki, judul FROM kekayaan_intelektual LIMIT 10 OFFSET 0",
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Pekik Argo%' LIMIT 10",
         "database": "itb_db",
-        "total": 1353,
-        "originalQuestion": "Tampilkan daftar KI yang ada",
-        "timestamp": 1773021890624,
+        "total": 3,
+        "originalQuestion": "cari data kekayaan intelektual dari Pekik Argo",
+        "timestamp": 1773108557936,
         "hitCount": 0
       }
     ],
     [
-      "berapa berapa ki pada tahun 2025",
+      "tampilkan nama dan jenis ki dari pekik argo",
       {
-        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2025%'",
+        "sql": "SELECT id_ki, jenis_ki FROM kekayaan_intelektual WHERE inventor LIKE '%Pekik Argo%' LIMIT 10",
         "database": "itb_db",
-        "total": 30,
-        "originalQuestion": "Berapa jumlah KI pada tahun 2025",
-        "timestamp": 1773021929387,
+        "total": 3,
+        "originalQuestion": "tampilkan nama dan jenis ki dari pekik argo",
+        "timestamp": 1773108593649,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan data kekayaan intelektual yang terkait dengan motor",
+      "tampilkan data ki yang terkait dengan tahun 2015",
       {
-        "sql": "SELECT * FROM kekayaan_intelektual WHERE judul LIKE '%motor%' LIMIT 10 OFFSET 0",
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2015%' LIMIT 10",
         "database": "itb_db",
-        "total": 15,
-        "originalQuestion": "Tampilkan data Kekayaan Intelektual yang terkait dengan motor",
-        "timestamp": 1773022072352,
+        "total": 6,
+        "originalQuestion": "tampilkan data ki yang terkait dengan tahun 2015",
+        "timestamp": 1773108650268,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan daftar kekayaan intelektual yang terkait dengan inventor bismo",
+      "tampilkan judul dan jenis ki dari data ki yang terkait dengan tahun 2015",
       {
-        "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Bismo%' LIMIT 10 OFFSET 0",
+        "sql": "SELECT judul, jenis_ki FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2015%' LIMIT 10",
         "database": "itb_db",
-        "total": 28,
-        "originalQuestion": "Tampilkan daftar Kekayaan Intelektual yang terkait dengan inventor Bismo",
-        "timestamp": 1773022249320,
+        "total": 6,
+        "originalQuestion": "tampilkan judul dan jenis ki dari data ki yang terkait dengan tahun 2015",
+        "timestamp": 1773108674339,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan berapa ki dari pak bismo per tahun",
+      "berapa ki yang hak cipta",
       {
-        "sql": "SELECT YEAR(tgl_pendaftaran) AS tahun, COUNT(*) AS total FROM kekayaan_intelektual WHERE inventor LIKE '%Bismo%' GROUP BY YEAR(tgl_pendaftaran) ORDER BY tahun ASC LIMIT 10",
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE jenis_ki = 'Hak Cipta'",
         "database": "itb_db",
-        "total": 7,
-        "originalQuestion": "Tampilkan jumlah KI dari pak Bismo per tahun",
-        "timestamp": 1773022394495,
+        "total": 463,
+        "originalQuestion": "total ki yang hak cipta",
+        "timestamp": 1773108752154,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan status dokumen ki dengan nomor permohonan a00202000194",
+      "berapa ki yang paten dan desain industri",
       {
-        "sql": "SELECT status_dokumen FROM kekayaan_intelektual WHERE no_permohonan = 'A00202000194' LIMIT 10",
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE jenis_ki IN ('Paten', 'Desain Industri')",
+        "database": "itb_db",
+        "total": 846,
+        "originalQuestion": "total ki yang paten dan desain industri",
+        "timestamp": 1773108783873,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data ki dari fakultas teknologi industri dan fakultas teknologi terapan",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE fakultas_inventor IN ('FTI', 'FTTM') LIMIT 10",
+        "database": "itb_db",
+        "total": 90,
+        "originalQuestion": "tampilkan data ki dari fakultas teknologi industri dan fakultas teknologi terapan",
+        "timestamp": 1773108825817,
+        "hitCount": 0
+      }
+    ],
+    [
+      "cari ki dari pt aering",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE nama_instansi_inventor LIKE '%PT Aering%' LIMIT 10",
+        "database": "itb_db",
+        "total": 2,
+        "originalQuestion": "cari ki dari pt aering",
+        "timestamp": 1773108888076,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan ki dengan no permohonan s00202409617",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE no_permohonan LIKE '%S00202409617%' LIMIT 10",
         "database": "itb_db",
         "total": 1,
-        "originalQuestion": "Tampilkan status dokumen KI dengan nomor permohonan A00202000194",
-        "timestamp": 1773022521371,
+        "originalQuestion": "tampilkan ki dengan no permohonan S00202409617",
+        "timestamp": 1773109074795,
         "hitCount": 0
       }
     ],
     [
-      "siapa inventor ki dengan nomor permohonan a00202000194",
+      "berapa ki yang mitra kepemilikan dari itb",
       {
-        "sql": "SELECT inventor FROM kekayaan_intelektual WHERE no_permohonan = 'A00202000194' LIMIT 10",
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE mitra_kepemilikan LIKE '%ITB%'",
         "database": "itb_db",
         "total": 1,
-        "originalQuestion": "Siapa inventor KI dengan nomor permohonan A00202000194",
-        "timestamp": 1773022545666,
+        "originalQuestion": "berapa ki yang mitra kepemilikan dari itb",
+        "timestamp": 1773109175976,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan daftar ki",
+      "ki yang mitra nya dari institut teknologi bandung berapa",
       {
-        "sql": "SELECT * FROM kekayaan_intelektual LIMIT 10",
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE mitra_kepemilikan LIKE '%Institut Teknologi Bandung%'",
         "database": "itb_db",
         "total": 1353,
-        "originalQuestion": "tampilkan daftar ki",
-        "timestamp": 1773026930645,
+        "originalQuestion": "ki yang mitra nya dari institut teknologi Bandung ada berapa",
+        "timestamp": 1773109281965,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan daftar ki yang terdaftar pada tahun 2025",
+      "liat ki yang inventornya taufan",
       {
-        "sql": "SELECT * FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2025%' LIMIT 10",
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Taufan%' LIMIT 10",
         "database": "itb_db",
-        "total": 30,
-        "originalQuestion": "tampilkan daftar ki yang terdaftar pada tahun 2025",
-        "timestamp": 1773027003182,
+        "total": 10,
+        "originalQuestion": "liat ki yang inventornya Taufan",
+        "timestamp": 1773109630996,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan data kekayaan intelektual yang mengenai motor",
+      "tampilkan data kekayaan intelektual yang inventornya mengandung nama taufan",
       {
-        "sql": "SELECT * FROM kekayaan_intelektual WHERE judul LIKE '%motor%' LIMIT 10",
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Taufan%' LIMIT 10",
         "database": "itb_db",
-        "total": 15,
-        "originalQuestion": "tampilkan data Kekayaan Intelektual yang mengenai motor",
-        "timestamp": 1773027053823,
+        "total": 10,
+        "originalQuestion": "Tampilkan data kekayaan intelektual yang inventornya mengandung nama Taufan",
+        "timestamp": 1773109775778,
+        "hitCount": 0
+      }
+    ],
+    [
+      "ada siapa saja nama anggota ujicoba",
+      {
+        "sql": "SELECT nama \nFROM anggota \nLIMIT 10 OFFSET 0",
+        "database": "ujicoba",
+        "total": 4,
+        "originalQuestion": "Ada siapa saja nama anggota ujicoba?",
+        "timestamp": 1773111410223,
+        "hitCount": 0
+      }
+    ],
+    [
+      "hobinya apa aja",
+      {
+        "sql": "SELECT DISTINCT inventor FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Paten%' LIMIT 10",
+        "database": "itb_db",
+        "total": 515,
+        "originalQuestion": "hobinya apa aja?",
+        "timestamp": 1773111462797,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan coba data nya",
+      {
+        "sql": "SELECT DISTINCT * FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Paten%' LIMIT 10",
+        "database": "itb_db",
+        "total": 628,
+        "originalQuestion": "tampilkan coba data nya",
+        "timestamp": 1773111571571,
+        "hitCount": 0
+      }
+    ],
+    [
+      "daftar hobi dari anggota ujicoba",
+      {
+        "sql": "SELECT DISTINCT nama_hobi FROM hobi LIMIT 10 OFFSET 0",
+        "database": "ujicoba",
+        "total": 5,
+        "originalQuestion": "daftar hobi dari anggota ujicoba",
+        "timestamp": 1773111736183,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan kan juga sama nama nama nya",
+      {
+        "sql": "SELECT DISTINCT nama_lengkap FROM karyawan LIMIT 50",
+        "database": "perusahaan_profesional_db",
+        "total": 3,
+        "originalQuestion": "tampilkan kan juga sama nama nama nya",
+        "timestamp": 1773112192868,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan nama-nama inventor dari database kekayaan intelektual",
+      {
+        "sql": "SELECT DISTINCT inventor FROM kekayaan_intelektual WHERE inventor IS NOT NULL AND inventor != '' LIMIT 50 OFFSET 0",
+        "database": "itb_db",
+        "total": 1006,
+        "originalQuestion": "tampilkan nama-nama inventor dari database kekayaan intelektual",
+        "timestamp": 1773112273896,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data anggota dari database ujicoba",
+      {
+        "sql": "SELECT * FROM anggota LIMIT 10 OFFSET 0",
+        "database": "ujicoba",
+        "total": 4,
+        "originalQuestion": "tampilkan data anggota dari database ujicoba",
+        "timestamp": 1773112409680,
         "hitCount": 0
       }
     ]
   ],
   "stats": {
     "hits": 0,
-    "misses": 19
+    "misses": 25
   },
-  "lastSaved": 1773027053824
+  "lastSaved": 1773112409681
 }

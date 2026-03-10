@@ -598,6 +598,19 @@
             "lastUsed": 1772782538768,
             "confidence": 0.5
           }
+        ],
+        [
+          "tampilkan kan juga sama nama nama nya_unknown",
+          {
+            "query": "tampilkan kan juga sama nama nama nya",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 6,
+            "avgExecutionTime": 78362,
+            "lastUsed": 1773112193273,
+            "confidence": 0.5
+          }
         ]
       ],
       "shortcuts": [
@@ -1044,6 +1057,17 @@
             "frequency": 1,
             "avgExecutionTime": 30408,
             "lastUsed": 1772782538768,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan kan juga sama nama nama nya",
+          {
+            "query": "tampilkan kan juga sama nama nama nya",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 78362,
+            "lastUsed": 1773112193273,
             "confidence": 0.3
           }
         ]
@@ -1576,6 +1600,19 @@
                 "name": "itb_db",
                 "score": 1,
                 "lastUsed": 1772782538768
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan kan juga sama nama nama nya",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1773112193273
               }
             ],
             "totalQueries": 1
@@ -2289,5 +2326,5 @@
       "errors": []
     }
   ],
-  "lastSaved": 1773070414595
+  "lastSaved": 1773116345597
 }

@@ -11,6 +11,8 @@ const profileRouter = require('./profile');
 const databaseConfigRouter = require('./database-config');
 const dbHelper = require('./db-helper');
 const apiKeysHelper = require('./api-keys-helper');
+const SchedulerService = require('./services/scheduler-service');
+const dashboardService = require('./services/dashboard-service');
 require('dotenv').config();
 
 const app = express();
@@ -118,6 +120,7 @@ app.set('io', io);
 // Serve static files untuk images
 app.use('/images', express.static('images'));
 app.use('/uploads', express.static('uploads'));
+app.use('/dashboard', express.static(path.join(__dirname, 'public/dashboard')));
 
 // Download endpoint agar mobile (WPS Office/Browser HP) mendownload file asli, bukan malah index.html front-end
 app.get('/api/download/:filename', (req, res) => {
@@ -140,6 +143,16 @@ app.get('/api/download/:filename', (req, res) => {
     });
   } else {
     res.status(404).send('File tidak ditemukan.');
+  }
+});
+
+// Dashboard routes
+app.get('/api/dashboard-data/:id', (req, res) => {
+  const data = dashboardService.getDashboard(req.params.id);
+  if (data) {
+    res.json({ success: true, ...data });
+  } else {
+    res.status(404).json({ success: false, error: 'Dashboard tidak ditemukan atau sudah kadaluarsa' });
   }
 });
 
@@ -1256,6 +1269,10 @@ app.get('/api/health', async (req, res) => {
 // Inisialisasi ChatbotHandler
 const ChatbotHandler = require('./chatbot-logic');
 const chatbotHandler = new ChatbotHandler();
+
+// Inisialisasi Scheduler (Phase 5)
+const scheduler = new SchedulerService(chatbotHandler);
+scheduler.init();
 
 // Get all users endpoint
 app.get('/api/users', async (req, res) => {

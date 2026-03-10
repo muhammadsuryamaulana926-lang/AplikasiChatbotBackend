@@ -79,7 +79,17 @@
           "timestamp": 1773041156694
         }
       ]
+    ],
+    [
+      "tampilkan nama anggota dan hobi mereka",
+      [
+        {
+          "sql": "SELECT a.nama_hobi, h.nama_hobi \nFROM anggota a \nJOIN hobi h ON a.id = h.anggota_id \nLIMIT 10 OFFSET 0",
+          "error": "Unknown column 'a.nama_hobi' in 'field list'",
+          "timestamp": 1773111941351
+        }
+      ]
     ]
   ],
-  "lastSaved": 1773041156695
+  "lastSaved": 1773111941360
 }
