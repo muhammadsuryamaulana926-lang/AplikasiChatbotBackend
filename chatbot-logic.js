@@ -4,119 +4,14 @@ const path = require("path");
 const dbHelper = require("./db-helper");
 const natural = require("natural");
 const apiKeysHelper = require("./api-keys-helper");
-const queryLearning = require('./query-learning');
-
-// ================================================================
-// NEW MODULES — Peningkatan Sistem Chatbot
-// ================================================================
-const sqlValidator = require('./safety/sql-validator');
-const hallucinationGuard = require('./safety/hallucination-guard');
-const inputNormalizer = require('./preprocessors/input-normalizer');
 const contextManager = require('./core/context-manager');
-const intentClassifier = require('./core/smart-intent-classifier');
-const { INTENT_TYPES, COMMAND_SUBTYPES } = require('./core/smart-intent-classifier');
 const learningV2 = require('./learning-system-v2');
-
-// ================================================================
-// SMART ENHANCEMENT MODULES — Peningkatan Kecerdasan Chatbot
-// ================================================================
-const queryCache = require('./core/query-cache');
-const errorMemory = require('./core/error-memory');
-const responseScorer = require('./core/response-scorer');
 const aiOrchestrator = require('./core/ai-orchestrator');
+const databaseRouter = require('./core/database-router');
+const dbProfiler = require('./core/db-profiler');
+const ragPipeline = require('./core/rag-pipeline');
 
-// ================================================================
-// LANGUAGE INTELLIGENCE LAYERS — 4-Layer NLU Pipeline
-// ================================================================
-const semanticNormalizer = require('./preprocessors/semantic-normalizer');   // Layer 2
-const intentEnricher = require('./preprocessors/intent-enricher');           // Layer 3
-const adaptiveLearner = require('./core/adaptive-learner');                  // Layer 4
-
-// Load query patterns untuk few-shot examples
-let queryPatternsData = { queries: [] };
-try {
-  const fs = require('fs');
-  const qpPath = require('path').join(__dirname, 'query-patterns.json');
-  if (fs.existsSync(qpPath)) {
-    queryPatternsData = JSON.parse(fs.readFileSync(qpPath, 'utf8'));
-    console.log(`✅ Query patterns loaded: ${queryPatternsData.queries?.length || 0} patterns for few-shot learning`);
-  }
-} catch (e) { /* silent */ }
-const {
-  formatDate,
-  formatNumber,
-  stripEmoji,
-  formatSnakeCaseValue,
-  formatInventorList,
-  formatDbName
-} = require('./utils/formatters');
-
-// ================================================================
-// API CONFIG
-// ================================================================
-function getApiConfigs() {
-  const saved = apiKeysHelper.getEnabledApiKeys();
-  if (saved.length > 0) {
-    return saved.map(k => ({
-      ...k,
-      key: k.apiKey,
-      isGemini: k.provider === 'gemini',
-      isCohere: k.provider === 'cohere',
-      isHF: k.provider === 'huggingface'
-    }));
-  }
-  return [
-    {
-      name: "Gemini", key: process.env.GEMINI_API_KEY,
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      isGemini: true
-    },
-    {
-      name: "Groq", key: process.env.GROQ_API_KEY,
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      model: "llama-3.3-70b-versatile"
-    },
-    {
-      name: "OpenRouter", key: process.env.OPENROUTER_API_KEY,
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      model: "google/gemini-2.0-flash-exp:free"
-    },
-    {
-      name: "Cohere", key: process.env.COHERE_API_KEY,
-      url: "https://api.cohere.ai/v1/chat",
-      model: "command-r-plus", isCohere: true
-    },
-    {
-      name: "HuggingFace", key: process.env.HF_API_KEY,
-      url: "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
-      isHF: true
-    },
-    {
-      name: "OpenAI", key: process.env.OPENAI_API_KEY,
-      url: "https://api.openai.com/v1/chat/completions",
-      model: "gpt-4o-mini"
-    }
-  ].filter(api => !!api.key);
-}
-
-// ================================================================
-// RATE LIMITER — mencegah spam ke API
-// ================================================================
-let lastApiCall = 0;
-async function apiQueue() {
-  const now = Date.now();
-  const wait = Math.max(0, lastApiCall + 800 - now);
-  if (wait > 0) await new Promise(r => setTimeout(r, wait));
-  lastApiCall = Date.now();
-}
-
-// ================================================================
-// STATE GLOBAL
-// ================================================================
-let schemaCache = {};
-let longTermHistoryFetched = new Set(); // userId
-
-// Pool untuk chatbot_db (untuk riwayat chat)
+// History Pool for Chat History (Ingatan Waktu)
 const historyPool = mysql.createPool({
   host: 'localhost',
   user: 'root',
@@ -126,558 +21,205 @@ const historyPool = mysql.createPool({
   connectionLimit: 5
 });
 
-// ================================================================
-// SCHEMA CACHE REFRESH — otomatis setiap 30 menit
-// ================================================================
-setInterval(() => {
-  if (Object.keys(schemaCache).length > 0) {
-    schemaCache = {};
-    console.log('🔄 Schema cache cleared — will reload on next query');
-  }
-}, 30 * 60 * 1000);
+let schemaCache = {};
+let longTermHistoryFetched = new Set();
 
-// ================================================================
-// HELPER: DEBUG LOG
-// ================================================================
+const {
+  formatDate,
+  formatNumber,
+  stripEmoji,
+  formatSnakeCaseValue,
+  formatInventorList,
+  formatDbName
+} = require('./utils/formatters');
+
 function debugLog(label, content) {
   try {
-    require('fs').appendFileSync(
+    const fs = require('fs');
+    fs.appendFileSync(
       path.join(__dirname, 'debug_sql_out.txt'),
       `\n[${new Date().toISOString()}] ${label}: ${typeof content === 'object' ? JSON.stringify(content) : content}`
     );
   } catch (e) { }
 }
 
-// Formatters are now imported from ./utils/formatters.js
-
-// ================================================================
-// MAIN CLASS
-// ================================================================
 class ChatbotHandler {
   constructor() {
     this.dbConfig = dbHelper.getDbConfig();
+    this.initPhase7();
   }
 
-  // ================================================================
-  // ENTRY POINT UTAMA
-  // ================================================================
+  async initPhase7() {
+    databaseRouter.setAIHandler(this.askAI.bind(this));
+    const allConfigs = dbHelper.getAllActiveConnectionConfigs();
+    dbProfiler.profileDatabases(allConfigs).then(() => {
+      console.log('🚀 Phase 7: AI-First Agent is ready.');
+    });
+
+    ragPipeline.init({
+      askAI: this.askAI.bind(this),
+      schemaCache: schemaCache,
+      ensureSchemaCache: this.ensureSchemaCache.bind(this)
+    });
+  }
+
   async processMessage(question, userId = "default", progressCallback = null, host = null) {
     try {
-      // Sync history dari DB jika belum (Ingatan Waktu)
       await this.syncHistoryFromDB(userId);
-
       const result = await this._processMessageCore(question, userId, progressCallback, host);
 
-      // Tambahkan rekomendasi ke semua jawaban yang berupa string "answer"
       if (result && result.type === 'answer' && typeof result.message === 'string') {
         const session = contextManager.getSession(userId);
-        const lastEntry = session.getLastEntry(); // Ini bisa jadi user message atau assistant message tergantung timing
+        const lastEntry = session.getLastEntry();
 
-        if (!result.message.includes('💡 **Rekomendasi Pertanyaan:**')) {
-          const qTrim = question.trim().toLowerCase();
-          const session = contextManager.getSession(userId);
+        // Check if we should append recommendations (exclude closing/short thank yous)
+        const qTrim = question.trim().toLowerCase();
+        const closingKeywords = /\b(cukup|sudah|oke|ok|sip|siap|makasih|terimakasih|thanks|thx|terima kasih|selesai|udahan|bye|dah|sampai jumpa)\b/i;
+        const isClosing = (qTrim.length < 30 && closingKeywords.test(qTrim));
 
-          // Regex lebih fleksibel: mengandung kata kunci penutup di kalimat pendek
-          const closingKeywords = /\b(cukup|sudah|oke|ok|sip|siap|makasih|terimakasih|thanks|thx|terima kasih|selesai|udahan|bye|dah|sampai jumpa)\b/i;
-          const isClosing = (qTrim.length < 30 && closingKeywords.test(qTrim))
-            || session._semanticMeta?.isClosing === true;
+        if (!isClosing && !result.message.includes('💡')) {
+          const cat = await this.getDatabaseCatalog();
+          const recs = await this.generateSmartRecommendations(question, cat, this.getContext(userId));
 
-          if (!isClosing) {
-            const cat = await this.getDatabaseCatalog();
-            let recs = await this.generateSmartRecommendations(question, cat, this.getContext(userId));
+          if (recs) {
+            result.message += `\n\n💡 **Rekomendasi Pertanyaan:**\n${recs}`;
+          }
 
-            // Tambahkan tip ekspor HANYA jika data > 1 (grafik/excel tidak relevan untuk 1 data)
-            const hasManyData = (result.data && result.data.length > 1) || (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 1);
-
-            if (hasManyData && !this.isCountResult(result.data || [])) {
-              recs += `\n\n📊 **Tip:** Apakah kamu mau menampilkan grafiknya atau mengunduh datanya (Excel atau PDF)?`;
-            }
-
-            const appendedText = '\n\n💡 **Rekomendasi Pertanyaan:**\n' + recs;
-            result.message = result.message.trim() + appendedText;
-
-            if (lastEntry && lastEntry.role === 'assistant') {
-              lastEntry.content += appendedText;
-            }
+          const hasManyData = (result.data && result.data.length > 1);
+          if (hasManyData && !this.isCountResult(result.data)) {
+            result.message += `\n\n📊 **Tip:** Ketik **"buat grafik"**, **"dashboard"**, **"cetak pdf"**, atau **"download excel"** untuk mengolah data ini.`;
           }
         }
       }
       return result;
     } catch (err) {
       console.error('Chatbot Error:', err);
-      debugLog('ERROR', err.message);
-      return { type: "answer", message: `Maaf, terjadi kesalahan teknis: ${err.message}. Silakan coba lagi.` };
+      return { type: "answer", message: `Maaf, terjadi kesalahan teknik. Silakan coba lagi.` };
     }
   }
 
   async _processMessageCore(question, userId, progressCallback, host = null) {
     let q = question.trim();
     if (!q) return { type: "answer", message: "Pertanyaan tidak boleh kosong." };
-    const startTime = Date.now();
 
-    // ════════════════════════════════════════════════════════════════
-    // STEP 1: LOAD CONTEXT & SESSION
-    // ════════════════════════════════════════════════════════════════
     const session = contextManager.getSession(userId);
     const context = session.conversationHistory;
     const lastEntry = session.getLastEntry();
-    const qLower = q.toLowerCase();
 
     // ════════════════════════════════════════════════════════════════
-    // STEP 2: GUARDRAILS (keamanan — tetap rule-based, wajib)
+    // STEP 1: AI-FIRST UNDERSTANDING (Phase 7 Agentic)
     // ════════════════════════════════════════════════════════════════
-    const guardrail = this.checkGuardrails(qLower);
-    if (guardrail.blocked) {
-      this.addToContext(userId, "user", question);
-      this.addToContext(userId, "assistant", guardrail.response);
-      return { type: "answer", message: guardrail.response };
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 2.5: PENDING CONFIRMATION CHECK (Mencegah "Jebakan Konfirmasi")
-    // ════════════════════════════════════════════════════════════════
-    if (lastEntry && lastEntry.pendingDataDisplay) {
-      if (/^(tidak|nggak|gak|no|nope|ga|enggak|jangan|batal)$/i.test(qLower)) {
-        // User menolak memuat data
-        lastEntry.pendingDataDisplay = false;
-        const msg = "Baik, saya mengerti. Ada hal lain yang ingin Anda cari tahu?";
-        this.addToContext(userId, "user", question);
-        this.addToContext(userId, "assistant", msg);
-        return { type: "answer", message: msg };
-      }
-
-      // Deteksi jika user sebenarnya nanya pertanyaan baru (bukan sekadar jawab 'ya/lanjut')
-      const isNewQuestion = qLower.split(' ').length > 3 || /\b(apa|siapa|kapan|kenapa|gimana|bagaimana|berapa|ada|tentang|bagaimana|cari)\b/i.test(qLower);
-
-      if (isNewQuestion) {
-        // BATALKAN konfirmasi, lanjutkan sebagai topik baru
-        lastEntry.pendingDataDisplay = false;
-      } else {
-        // Asumsi user menjawab iya / lanjut / tampilkan
-        lastEntry.pendingDataDisplay = false; // Reset flag
-        lastEntry.skipConfirmation = true; // Beri tanda bahwa kali ini langsung load
-        return await this.handleDatabaseQuery(lastEntry.originalQuestion || lastEntry.lastQuestion, userId, null, lastEntry, progressCallback, null, false, lastEntry.lastSqlQuery);
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 3: SPECIAL INTENT (anomali, duplikasi — tetap rule-based)
-    // ════════════════════════════════════════════════════════════════
-    const specialIntent = this.detectSpecialIntent(qLower);
-    if (specialIntent) {
-      debugLog('SPECIAL_INTENT', specialIntent.type);
-      return await this.handleSpecialIntent(specialIntent, q, userId, lastEntry, progressCallback);
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 3.5: SEMANTIC QUICK CHECK (komentar/edukatif only)
-    // ════════════════════════════════════════════════════════════════
-    const semanticResult = semanticNormalizer.normalize(q, {
-      lastQuestion: lastEntry?.lastQuestion,
-      lastDatabase: lastEntry?.lastDatabase
-    });
-    session._semanticMeta = semanticResult.meta || {};
-
-    if (semanticResult.meta?.isClosing || semanticNormalizer.isClosing(q) || /^(makasih|terimakasih|thanks|thx|tq|oke?\s+makasih|oke?\s+terimakasih|sip|siap|dah|bye)\b.{0,15}$/i.test(qLower)) {
-      const farewells = [
-        "Terima kasih sudah berkonsultasi! 😊 Semoga informasinya bermanfaat. Jika butuh bantuan lagi di lain waktu, saya siap membantu. Sampai jumpa!",
-        "Siap, terima kasih kembali! Senang bisa membantu Anda mengeksplorasi data Kekayaan Intelektual. Sampai bertemu lagi! 👋",
-        "Sama-sama! 🙏 Jangan ragu untuk kembali jika ada data lain yang ingin Anda cari. Selamat melanjutkan aktivitas!"
-      ];
-      const reply = farewells[Math.floor(Math.random() * farewells.length)];
-      this.addToContext(userId, "user", question);
-      this.addToContext(userId, "assistant", reply);
-      return { type: "answer", message: reply };
-    }
-
-    if (semanticResult.meta?.isComment || semanticResult.meta?.isRhetorical) {
-      const commentReply = `Terima kasih! 😊 Ada yang ingin Anda tanyakan lagi tentang Kekayaan Intelektual?`;
-      this.addToContext(userId, "user", question);
-      this.addToContext(userId, "assistant", commentReply, lastEntry ? {
-        lastDatabase: lastEntry.lastDatabase, lastQuestion: lastEntry.lastQuestion,
-        originalQuestion: lastEntry.originalQuestion, lastOffset: lastEntry.lastOffset,
-        lastTotal: lastEntry.lastTotal, lastSqlQuery: lastEntry.lastSqlQuery,
-        wasCountQuery: lastEntry.wasCountQuery, lastMultipleDatabases: lastEntry.lastMultipleDatabases,
-        lastDistinctValues: lastEntry.lastDistinctValues
-      } : null);
-      return { type: "answer", message: commentReply };
-    }
-
-    if (semanticResult.meta?.isEducational) {
-      const topic = semanticResult.meta.topic;
-      try {
-        const eduAnswer = await this.askAI(`Jelaskan "${topic}" dalam konteks Kekayaan Intelektual (KI) ITB. Jawab dalam 2-3 kalimat yang jelas dan natural dalam Bahasa Indonesia.`, 0, 0, 0.7);
-        if (eduAnswer && eduAnswer.length > 20) {
-          const dbCatalogEdu = await this.getDatabaseCatalog();
-          const recs = await this.generateSmartRecommendations(q, dbCatalogEdu, context);
-          const finalEdu = this.stripPromptLeak(eduAnswer) + (recs ? `\n\n💡 **Rekomendasi Pertanyaan:**\n${recs}` : '');
-          this.addToContext(userId, "user", question);
-          this.addToContext(userId, "assistant", finalEdu);
-          adaptiveLearner.recordSuccess(question, q, null, 'educational', 1, Date.now() - startTime);
-          return { type: "answer", message: finalEdu };
-        }
-      } catch (e) { /* fallthrough */ }
-    }
-
-    // Gunakan normalisasi semantik jika ada
-    if (semanticResult.normalized && semanticResult.normalized !== q) {
-      debugLog('SEMANTIC_NORMALIZED', { from: q, to: semanticResult.normalized });
-      q = semanticResult.normalized;
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 3.6: LEARNING SHORTCUT — Skip AI jika sudah pernah berhasil
-    // ════════════════════════════════════════════════════════════════
-    const shortcut = learningV2.getShortcut(userId, q);
-    if (shortcut && shortcut.isShortcut && shortcut.confidence >= 0.80) {
-      debugLog('LEARNING_SHORTCUT', { query: q, database: shortcut.database, confidence: shortcut.confidence });
-      console.log(`⚡ Learning shortcut activated: "${q}" → ${shortcut.database} (${(shortcut.confidence * 100).toFixed(0)}%)`);
-      return await this.handleDatabaseQuery(q, userId, null, lastEntry, progressCallback, [shortcut.database]);
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 4: QUICK RULES — Regex HANYA untuk perintah 100% pasti
-    // (pagination, ya/tidak, nomor, grafik, export, sapaan)
-    // ════════════════════════════════════════════════════════════════
-    const quickResult = aiOrchestrator.quickClassify(q, session);
-
-    if (quickResult) {
-      debugLog('QUICK_CLASSIFY', quickResult);
-
-      // --- COMMAND: Pagination, select number, chart, export ---
-      if (quickResult.intent === 'COMMAND') {
-        switch (quickResult.command) {
-          case 'PAGINATE_NEXT':
-            if (lastEntry?.lastQuestion) return await this.handlePagination(userId, lastEntry, progressCallback, false);
-            break;
-          case 'PAGINATE_RESET':
-            if (lastEntry?.lastQuestion) return await this.handlePagination(userId, lastEntry, progressCallback, true);
-            break;
-          case 'PAGINATE_RANGE':
-            if (lastEntry?.lastQuestion && quickResult.data) {
-              return await this.handleRangePagination(userId, lastEntry, progressCallback, quickResult.data.start, quickResult.data.end);
-            }
-            break;
-          case 'DATABASE_LIST':
-            return await this.handleDatabaseList(userId);
-          case 'SELECT_NUMBER':
-            const selResult = await this.handleSelectionMode(q, userId, lastEntry, progressCallback);
-            if (selResult) return selResult;
-            break;
-          case 'CHART':
-            if (lastEntry && lastEntry.lastData && lastEntry.lastDataIsGroup) {
-              if (progressCallback) progressCallback('Membuat grafik...');
-              const chartResult = await this.generateChartResponse(lastEntry.lastData, lastEntry.lastQuestion || q, userId, host);
-              if (chartResult) return chartResult;
-            } else if (/^(grafik|diagram|chart|visualisasi|buat grafik|buat diagram|tampilkan grafik)$/i.test(q.trim())) {
-              // HANYA berikan info jika pertanyaannya benar-benar hanya kata "grafik" dkk tanpa parameter
-              const noChartMsg = "Maaf, data pencarian terakhir tidak cocok untuk dibuat grafik (bukan data rekap/jumlah).\n\nSilakan tanyakan data rekapitulasi terlebih dahulu (contoh: **'ada berapa KI tiap fakultas?'**) atau langsung minta diringkas (contoh: **'buat grafik KI per tahun'**).";
-              this.addToContext(userId, "user", q);
-              this.addToContext(userId, "assistant", noChartMsg);
-              return { type: "answer", message: noChartMsg };
-            }
-            // Jika mengandung detail lain (seperti "per tahun"), biarkan FALL-THROUGH ke AI Orchestrator
-            break;
-          case 'EXPORT':
-            if (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 0) {
-              if (progressCallback) progressCallback('Menyiapkan file ekspor...');
-              const exportResult = await this.generateExportResponse(lastEntry.lastData, lastEntry.lastQuestion || q, userId, host);
-              if (exportResult) return exportResult;
-            } else if (/^(download|unduh|ekspor|export|csv|excel|xlsx)$/i.test(q.trim())) {
-              const noExportMsg = "Maaf, tidak ada data sebelumnya yang bisa diexport. Silakan lakukan pencarian data terlebih dahulu atau ketik permintaan spesifik (misal: **'unduh data paten 2024'**).";
-              this.addToContext(userId, "user", q);
-              this.addToContext(userId, "assistant", noExportMsg);
-              return { type: "answer", message: noExportMsg };
-            }
-            break;
-          case 'EXPORT_PDF':
-            if (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 0) {
-              if (progressCallback) progressCallback('Menyusun laporan PDF...');
-              return await this.generatePDFResponse(lastEntry.lastData, lastEntry.originalQuestion || lastEntry.lastQuestion, userId, host);
-            } else if (/^(pdf|export\s+pdf|unduh\s+pdf)$/i.test(q.trim())) {
-              const noPdfMsg = "Maaf, tidak ada laporan yang bisa diubah menjadi PDF. Silakan lakukan pencarian atau rekapan data terlebih dahulu.";
-              this.addToContext(userId, "user", q);
-              this.addToContext(userId, "assistant", noPdfMsg);
-              return { type: "answer", message: noPdfMsg };
-            }
-            break;
-          case 'DASHBOARD':
-            if (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 0) {
-              if (progressCallback) progressCallback('Menyiapkan dashboard visual...');
-              return await this.generateDashboardResponse(lastEntry.lastData, lastEntry.originalQuestion || lastEntry.lastQuestion, userId, host);
-            } else if (/^(dashboard|visualisasi|buka\s+dashboard)$/i.test(q.trim())) {
-              const noDashboardMsg = "Maaf, tidak ada data sebelumnya untuk dibuatkan dashboard. Silakan lakukan pencarian data terlebih dahulu.";
-              this.addToContext(userId, "user", q);
-              this.addToContext(userId, "assistant", noDashboardMsg);
-              return { type: "answer", message: noDashboardMsg };
-            }
-            break;
-        }
-      }
-
-      // --- CONFIRMATION: Ya/Tidak ---
-      if (quickResult.intent === 'CONFIRMATION') {
-        // DETEKSI BOCORAN PERTANYAAN BARU: Jika user bilang "iya yang tentang motor", 
-        // quickClassify mungkin melihat kata "iya" dan mengangkapnya sebagai CONFIRMATION.
-        // Kita harus batalkan konfirmasi jika kalimatnya panjang atau mengandung kata tanya
-        const isNewQuestion = qLower.split(' ').length > 3 || /\b(apa|siapa|kapan|kenapa|gimana|bagaimana|berapa|ada|tentang|bagaimana|cari)\b/i.test(qLower);
-
-        if (!isNewQuestion) {
-          if (quickResult.value === true) {
-            // User menjawab YA — reuse SQL sebelumnya
-            if (lastEntry?.wasCountQuery || lastEntry?.pendingDataDisplay) {
-              if (lastEntry.lastSqlQuery && lastEntry.lastDatabase) {
-                try {
-                  let reuseSql = lastEntry.lastSqlQuery;
-                  if (/^\s*SELECT\s+COUNT\s*\(/i.test(reuseSql)) {
-                    const distinctMatch = reuseSql.match(/COUNT\s*\(\s*DISTINCT\s+([^)]+)\)/i);
-                    const fromMatch = reuseSql.match(/FROM\s+(.+)/i);
-                    if (distinctMatch && fromMatch) {
-                      reuseSql = `SELECT DISTINCT ${distinctMatch[1].trim()} FROM ${fromMatch[1]}`;
-                    } else if (fromMatch) {
-                      reuseSql = `SELECT * FROM ${fromMatch[1]}`;
-                    }
-                  }
-                  reuseSql = reuseSql.replace(/LIMIT\s+\d+(\s+OFFSET\s+\d+)?/i, '').trim() + ' LIMIT 10 OFFSET 0';
-
-                  const conf = dbHelper.getAllActiveConnectionConfigs().find(c => c.database === lastEntry.lastDatabase);
-                  if (conf) {
-                    const conn = await mysql.createConnection(conf);
-                    const [rows] = await conn.execute(reuseSql);
-                    await conn.end();
-
-                    if (rows.length > 0) {
-                      const isDistinctReuse = /SELECT\s+DISTINCT/i.test(reuseSql);
-                      const total = isDistinctReuse ? rows.length : (lastEntry.lastTotal || rows.length);
-
-                      let summary = '';
-                      if (isDistinctReuse) {
-                        const sample = JSON.stringify(rows.slice(0, 3));
-                        const summaryPrompt = `User bertanya: "${lastEntry.lastQuestion || q}". Jawabannya ada ${total} jenis/kategori berbeda.\nSampel data: ${sample}\nTulis 1 kalimat pembuka yang menyebutkan ditemukan ${total} jenis berbeda, dalam Bahasa Indonesia yang natural dan FAKTUAL.\nATURAN: JANGAN menyebut "Kecerdasan Intelektual". KI = Kekayaan Intelektual.\nPENTING: JANGAN mengarang kategori yang tidak ada di sampel.`;
-                        try {
-                          const aiSummary = await this.askAI(summaryPrompt, 0, 0, 0.3);
-                          if (aiSummary && aiSummary.length > 5) summary = this.stripPromptLeak(aiSummary) + '\n\n';
-                        } catch (e) { /* skip */ }
-                      }
-
-                      let lastDistinctValues = null;
-                      if (isDistinctReuse) {
-                        const distinctCol = reuseSql.match(/SELECT\s+DISTINCT\s+(\S+)/i)?.[1];
-                        if (distinctCol) {
-                          lastDistinctValues = { column: distinctCol, values: rows.map(r => Object.values(r)[0]).filter(Boolean) };
-                        }
-                      }
-
-                      const originalQ = lastEntry.lastQuestion || lastEntry.originalQuestion || q;
-                      const formatted = await this.formatResponse(originalQ, rows, lastEntry.lastDatabase, 0, total);
-                      this.addToContext(userId, "user", q);
-                      this.addToContext(userId, "assistant", summary + formatted, {
-                        lastDatabase: lastEntry.lastDatabase, lastQuestion: lastEntry.lastQuestion,
-                        originalQuestion: lastEntry.originalQuestion, lastOffset: 0, lastTotal: total,
-                        lastSqlQuery: reuseSql, wasCountQuery: false, lastData: rows,
-                        lastDataIsGroup: this.isGroupByResult(rows), lastDistinctValues
-                      });
-                      return { type: "answer", message: summary + formatted };
-                    }
-                  }
-                } catch (e) {
-                  debugLog('CONFIRM_REUSE_SQL_ERROR', e.message);
-                }
-              }
-
-              // Fallback: regenerate query dari pertanyaan asli
-              let detailQ = lastEntry.lastQuestion || lastEntry.originalQuestion || "";
-              if (detailQ.match(/^(berapa|jumlah|total|hitung|ada berapa)\s+(banyak\s+)?/i)) {
-                detailQ = detailQ.replace(/^(berapa|jumlah|total|hitung|ada berapa)\s+(banyak\s+)?/i, 'tampilkan daftar ');
-              }
-              return await this.handleDatabaseQuery(detailQ, userId, null, { ...lastEntry, wasCountQuery: false, pendingDataDisplay: false, skipConfirmation: true }, progressCallback, [lastEntry.lastDatabase]);
-            }
-
-            // Ya terhadap tip grafik/excel
-            if (lastEntry?.content && (
-              lastEntry.content.includes('Apakah kamu mau menampilkan grafiknya') ||
-              lastEntry.content.includes('mengunduh datanya') ||
-              lastEntry.content.includes('Excel/WPS')
-            )) {
-              const msg = "Baik! Apakah kamu ingin **melihat grafik** dari data tersebut atau **mengunduh file excel/WPS** nya?\n\nSilakan balas dengan mengetik **\"buat grafik\"** atau **\"download data\"** ya.";
-              this.addToContext(userId, "user", q);
-              this.addToContext(userId, "assistant", msg);
-              if (session.clearPendingConfirmation) session.clearPendingConfirmation();
-              return { type: "answer", message: msg };
-            }
-
-            // Ya tanpa konteks → treat as conversation
-            const convRes = await this.handleConversation(q, userId, await this.getDatabaseCatalog(), lastEntry);
-            this.addToContext(userId, "user", q);
-            this.addToContext(userId, "assistant", convRes);
-            return { type: "answer", message: convRes };
-          } else {
-            // User menjawab TIDAK
-            const cat = await this.getDatabaseCatalog();
-            const recs = await this.generateSmartRecommendations(lastEntry?.lastQuestion || q, cat, this.getContext(userId));
-            const msg = `Baik, tidak masalah! 😊 Jika ada pertanyaan lain, silakan tanyakan kapan saja.\n\n💡 **Rekomendasi Pertanyaan:**\n${recs}`;
-            this.addToContext(userId, "user", q);
-            this.addToContext(userId, "assistant", msg);
-            session.clearPendingConfirmation();
-            return { type: "answer", message: msg };
-          }
-        } else {
-          // Bypassed: It's a new question that happens to contain "iya" (like "iya yg tentang motor")
-          // Fall back and allow AI to process it as a fresh statement later in the workflow.
-          // Reset flags just in case.
-          if (lastEntry) lastEntry.pendingDataDisplay = false;
-        }
-      }
-
-      // --- CONVERSATION: Sapaan, terima kasih, pamitan ---
-      if (quickResult.intent === 'CONVERSATION') {
-        if (quickResult.subtype === 'GREETING') {
-          return await this.handleGreeting(q, userId, lastEntry);
-        }
-        const ans = await this.handleConversation(q, userId, await this.getDatabaseCatalog(), lastEntry);
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", ans);
-        return { type: "answer", message: ans };
-      }
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // STEP 5: AI ORCHESTRATOR — 1 panggilan AI untuk semua yg ambigu
-    // Intent + Entity Extraction + SQL Generation sekaligus
-    // ════════════════════════════════════════════════════════════════
-    debugLog('AI_ORCHESTRATOR_START', { query: q });
-    if (progressCallback) progressCallback('Memahami pertanyaan Anda...');
-
-    const dbCatalog = await this.getDatabaseCatalog();
-
-    // Build schema info for active databases
-    const allActive = dbHelper.getAllActiveConnectionConfigs();
-    const allSchemas = {};
-    for (const conf of allActive) {
-      try {
-        const conn = await mysql.createConnection(conf);
-        await this.ensureSchemaCache(conn, conf.database);
-        await conn.end();
-        if (schemaCache[conf.database]) {
-          allSchemas[conf.database] = schemaCache[conf.database];
-        }
-      } catch (e) { /* skip */ }
-    }
-
-    // Build conversation context string
+    if (progressCallback) progressCallback('Memahami maksud Anda...');
     const contextStr = this.buildConversationContext(context);
+    const understanding = await ragPipeline.understand(q, contextStr, lastEntry);
+    debugLog('AI_UNDERSTANDING', understanding);
 
-    // Build unified prompt & call AI
-    const unifiedPrompt = aiOrchestrator.buildUnifiedPrompt(q, allSchemas, contextStr, dbCatalog.summary, lastEntry);
-    const aiRaw = await this.askAI(unifiedPrompt, 0, 0, 0.2); // Low temp for structured output
-    const aiResult = aiOrchestrator.parseAIResponse(aiRaw);
+    if (!understanding) return { type: "answer", message: "Maaf, saya gagal memahami pertanyaan Anda." };
 
-    debugLog('AI_ORCHESTRATOR_RESULT', aiResult);
+    // 1. Handle CONVERSATION & AMBIGUOUS
+    if (understanding.intent === 'CONVERSATION' || understanding.intent === 'AMBIGUOUS') {
+      const msg = understanding.natural_response || "Ada yang bisa saya bantu? 😊";
+      this.addToContext(userId, "user", q);
+      this.addToContext(userId, "assistant", msg);
+      return { type: "answer", message: msg };
+    }
 
-    // ════════════════════════════════════════════════════════════════
-    // STEP 6: ROUTE berdasarkan hasil AI
-    // ════════════════════════════════════════════════════════════════
-    if (aiResult) {
-      // --- CONVERSATION (dari AI) ---
-      if (aiResult.intent === 'CONVERSATION') {
-        if (aiResult.natural_response) {
-          this.addToContext(userId, "user", q);
-          this.addToContext(userId, "assistant", aiResult.natural_response);
-          return { type: "answer", message: aiResult.natural_response };
-        }
-        const ans = await this.handleConversation(q, userId, dbCatalog, lastEntry);
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", ans);
-        return { type: "answer", message: ans };
+    // 2. Handle COMMAND (Export, Chart, Dashboard, Pagination)
+    if (understanding.intent === 'COMMAND' || understanding.action) {
+      const action = understanding.action || understanding.command;
+      debugLog('AI_COMMAND_TRIGGERED', action);
+
+      switch (action) {
+        case 'EXPORT_PDF':
+          if (lastEntry?.lastData) return await this.generatePDFResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'EXPORT_EXCEL':
+        case 'EXPORT':
+          if (lastEntry?.lastData) return await this.generateExportResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'GENERATE_CHART':
+        case 'CHART':
+          if (lastEntry?.lastData) return await this.generateChartResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'OPEN_DASHBOARD':
+        case 'DASHBOARD':
+          if (lastEntry?.lastData) return await this.generateDashboardResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'PAGINATE_NEXT':
+          return await this.handlePagination(userId, lastEntry, progressCallback, false);
+        case 'PAGINATE_RESET':
+          return await this.handlePagination(userId, lastEntry, progressCallback, true);
+        case 'DATABASE_LIST':
+          return await this.handleDatabaseList(userId);
+        case 'SELECT_NUMBER':
+          return await this.handleSelectionMode(q, userId, lastEntry, progressCallback);
       }
 
-      // --- AMBIGUOUS (dari AI) ---
-      if (aiResult.intent === 'AMBIGUOUS') {
-        const ambigMsg = `Maaf, saya belum memahami maksud pertanyaan Anda. Bisa diperjelas? 😊`;
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", ambigMsg);
-        return { type: "answer", message: ambigMsg };
-      }
-
-      // --- DATABASE_QUERY / FOLLOW_UP (dari AI) ---
-      // Jika AI sudah generate SQL → gunakan langsung (skip generateSQL)
-      if (aiResult.sql && aiResult.sql.trim().toUpperCase().startsWith('SELECT')) {
-        const targetDb = aiResult.database_hint || lastEntry?.lastDatabase;
-        if (targetDb) {
-          debugLog('AI_SQL_DIRECT', { sql: aiResult.sql, db: targetDb });
-          return await this.handleDatabaseQuery(
-            aiResult.transformed_query || q, userId, dbCatalog, lastEntry, progressCallback,
-            [targetDb], false, aiResult.sql, aiResult.target_columns // targetColumns added!
-          );
-        }
-      }
-
-      // Jika AI punya transformed_query tapi tidak SQL → gunakan query yang sudah diperjelas
-      if (aiResult.transformed_query) {
-        q = aiResult.transformed_query;
-        debugLog('AI_TRANSFORMED_QUERY', q);
+      if (!lastEntry?.lastData && ['EXPORT_PDF', 'EXPORT', 'CHART', 'DASHBOARD'].includes(action)) {
+        return { type: "answer", message: `Maaf, saya butuh data hasil pencarian sebelum bisa menjalankan perintah tersebut. Silakan cari data dulu ya!` };
       }
     }
 
-    // ════════════════════════════════════════════════════════════════
-    // STEP 6.5: Selection mode fallback (user ketik nomor tapi quick rules miss)
-    // ════════════════════════════════════════════════════════════════
-    const selResult = await this.handleSelectionMode(q, userId, lastEntry, progressCallback);
-    if (selResult) return selResult;
+    // 3. Handle DATABASE_QUERY
+    if (understanding.intent === 'DATABASE_QUERY' || (understanding.sql && understanding.sql.length > 10)) {
+      const targetDb = understanding.targetDb || lastEntry?.lastDatabase;
+      if (!targetDb) return await this.handleDatabaseList(userId);
 
-    // ════════════════════════════════════════════════════════════════
-    // STEP 7: Query modification (modifikasi query sebelumnya)
-    // ════════════════════════════════════════════════════════════════
-    const isColumnModifier = /\b(liatkan\s+semua|lihat\s+semua|tampilkan\s+(?:semua|lengkap|semua\s+kolom)|semua\s+kolomnya|data\s+lengkap|selengkapnya)\b/i.test(q);
-    if (lastEntry?.lastSqlQuery && (q.length < 80 || isColumnModifier)) {
-      const modResult = await this.handleQueryModification(q, userId, lastEntry, progressCallback);
-      if (modResult) return modResult;
-    }
+      if (progressCallback) progressCallback('Mencari data...');
+      const retrieval = await ragPipeline.retrieve(understanding.sql, targetDb);
 
-    // ════════════════════════════════════════════════════════════════
-    // STEP 8: FALLBACK — DATABASE QUERY (generate SQL via generateSQL)
-    // ════════════════════════════════════════════════════════════════
-    const result = await this.handleDatabaseQuery(q, userId, dbCatalog, lastEntry, progressCallback);
-
-    // Learning V2: Catat query yang berhasil
-    try {
-      const duration = Date.now() - startTime;
-      if (result && result.data) {
-        learningV2.learnFromQuery({
-          userId, userQuery: q,
-          database: lastEntry?.lastDatabase || 'unknown',
-          intent: aiResult?.intent || 'DATABASE_QUERY',
-          resultCount: Array.isArray(result.data) ? result.data.length : 0,
-          executionTime: duration
-        });
+      if (retrieval.error) {
+        debugLog('RETRIEVE_FAIL', retrieval.error);
       }
-    } catch (learnErr) {
-      debugLog('LEARNING_ERROR', learnErr.message);
+
+      if (progressCallback) progressCallback('Menyusun jawaban...');
+
+      // Smart total for group-by results
+      let displayTotal = retrieval.total;
+      const isGroup = this.isGroupByResult(retrieval.data);
+      if (isGroup) {
+        const valCol = Object.keys(retrieval.data[0]).find(k => ['total', 'jumlah', 'count'].includes(k.toLowerCase()));
+        displayTotal = retrieval.data.reduce((sum, row) => sum + (Number(row[valCol]) || 0), 0);
+      }
+
+      const naturalResponse = await ragPipeline.generate(q, retrieval.data, displayTotal, targetDb, lastEntry);
+
+      const finalMsg = this.stripPromptLeak(naturalResponse);
+      this.addToContext(userId, "user", q);
+      this.addToContext(userId, "assistant", finalMsg, {
+        lastDatabase: targetDb,
+        lastQuestion: q,
+        originalQuestion: understanding.transformed_query || q,
+        lastOffset: 0,
+        lastTotal: retrieval.total,
+        lastSqlQuery: understanding.sql,
+        lastData: retrieval.data,
+        lastDataIsGroup: isGroup,
+        lastGrandTotal: displayTotal
+      });
+
+      return { type: "answer", message: finalMsg, data: retrieval.data };
     }
 
-    return result;
+    return { type: "answer", message: "Maaf, saya bingung. Coba tanya dengan kalimat lain ya!" };
   }
 
-  // ================================================================
-  // ROUTER [LEGACY] — backward compatibility
-  // ================================================================
-  async routeIntent(q, dbCatalog, context) {
-    const classified = await intentClassifier.classify(q, { conversationHistory: context }, {
-      dbCatalog, askAI: this.askAI.bind(this)
-    });
-    return classified.intent === INTENT_TYPES.CONVERSATION ? 'CONVERSATION' : 'DATABASE_QUERY';
+  buildConversationContext(history) {
+    if (!history || !history.length) return "Percakapan baru.";
+    return history.slice(-6).map(h => `${h.role === "user" ? "User" : "Asisten"}: ${h.content?.slice(0, 200)}`).join('\n');
   }
 
-  // ================================================================
-  // SYNC HISTORY DARI DB (INGATAN WAKTU)
-  // ================================================================
+  _getBaseUrl(host) {
+    if (!host) return '';
+    const isLocal = host.includes('localhost') || host.includes('127.0.0.1') ||
+      host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.');
+    return isLocal ? `http://${host}` : `https://${host}`;
+  }
+
   async syncHistoryFromDB(userId) {
     if (!userId || userId === 'default' || longTermHistoryFetched.has(userId)) return;
-
     try {
       debugLog('SYNC_HISTORY', `Fetching history for ${userId}`);
-
-      // Ambil 5 riwayat chat terakhir
       const [chats] = await historyPool.execute(`
         SELECT id FROM riwayat_chat 
         WHERE user_email = ? 
@@ -691,8 +233,6 @@ class ChatbotHandler {
       }
 
       const chatIds = chats.map(c => c.id);
-
-      // Ambil semua pesan dari chat tersebut
       const [messages] = await historyPool.execute(`
         SELECT peran, konten, dibuat_pada 
         FROM pesan_chat 
@@ -700,2748 +240,38 @@ class ChatbotHandler {
         ORDER BY dibuat_pada ASC
       `);
 
-      if (messages.length > 0) {
-        const history = [];
-        for (const msg of messages) {
-          history.push({
-            role: msg.peran,
-            content: msg.konten,
-            timestamp: new Date(msg.dibuat_pada).getTime()
-          });
-        }
-
-        // Gabungkan dengan history yang sudah ada di memory
-        const existing = this.getContext(userId);
-        const combined = [...history, ...existing];
-
-        // Deduplicate berdasarkan content & timestamp
-        const seen = new Set();
-        const finalHistory = combined.filter(h => {
-          const key = `${h.role}|${h.content}|${h.timestamp}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        }).slice(-30);
-
-        // Simpan via Context Manager
+      if (messages && messages.length > 0) {
+        const history = messages.map(msg => ({
+          role: msg.peran, content: msg.konten, timestamp: new Date(msg.dibuat_pada).getTime()
+        }));
         const session = contextManager.getSession(userId);
-        session.conversationHistory = finalHistory;
+        session.conversationHistory = history;
       }
-
       longTermHistoryFetched.add(userId);
-      debugLog('SYNC_HISTORY_SUCCESS', `${userId}: ${messages.length} messages synced`);
-    } catch (err) {
-      debugLog('SYNC_HISTORY_ERROR', err.message);
-    }
+    } catch (err) { console.error('Sync Error:', err); }
   }
 
-  getRelativeTime(timestamp) {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const dayMs = 24 * 60 * 60 * 1000;
-
-    if (diff < 60000) return "Baru saja";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} menit lalu`;
-    if (diff < dayMs) return `${Math.floor(diff / 3600000)} jam lalu`;
-
-    const d1 = new Date(now).setHours(0, 0, 0, 0);
-    const d2 = new Date(timestamp).setHours(0, 0, 0, 0);
-    const daysDiff = Math.floor((d1 - d2) / dayMs);
-
-    if (daysDiff === 1) return "Kemarin";
-    if (daysDiff < 7) return `${daysDiff} hari lalu`;
-    if (daysDiff < 14) return "Minggu lalu";
-    if (daysDiff < 30) return `${Math.floor(daysDiff / 7)} minggu lalu`;
-    if (daysDiff < 60) return "Bulan lalu";
-
-    return new Date(timestamp).toLocaleDateString('id-ID', {
-      day: 'numeric', month: 'short', year: 'numeric'
-    });
-  }
-
-  // ================================================================
-  // NORMALISASI SLANG [LEGACY] — digantikan oleh preprocessors/input-normalizer.js
-  // Tetap ada untuk backward compatibility
-  // ================================================================
-  normalizeSlang(query) {
-    return inputNormalizer.normalize(query).normalized || query;
-  }
-
-  // ================================================================
-  // GUARDRAILS
-  // ================================================================
-  checkGuardrails(qLower) {
-    const patterns = [
-      // === Anti Prompt Injection ===
-      {
-        pattern: /\b(abaikan|lupakan|override|bypass)\s+(instruksi|perintah|aturan|prompt|sistem)|ignore\s+(previous|above|all|system)/i,
-        response: "Maaf, saya tidak dapat memproses permintaan tersebut."
-      },
-      // === Prediksi / Opini ===
-      {
-        pattern: /nobel|award.*internasional|penghargaan.*dunia/i,
-        response: "Maaf, saya tidak dapat memprediksi penghargaan atau pengakuan internasional."
-      },
-      {
-        pattern: /melanggar hukum|illegal|opini.*hukum|legal.*opinion/i,
-        response: "Maaf, saya tidak dapat memberikan opini hukum. Silakan konsultasi dengan ahli hukum."
-      },
-      // === Data Sensitif ===
-      {
-        pattern: /rahasia|confidential|secret|password|token|api.?key/i,
-        response: "Maaf, saya tidak dapat memberikan akses ke data yang bersifat rahasia atau kredensial sistem."
-      },
-      // === Modifikasi Data (DML) ===
-      {
-        pattern: /\b(edit|ubah|ganti|update|koreksi|hapus|delete|buang|hilangkan|tambah|insert|masukkan|buat|simpan|save)\b.*\b(data|jenis|status|judul|no|nomor|inventor|rekaman)\b/i,
-        response: "Mohon maaf, sebagai Asisten AI, saya hanya memiliki akses untuk membaca, menampilkan, dan menganalisis data yang ada. Saya tidak memiliki otoritas untuk melakukan perubahan data."
-      },
-      // === Di Luar Domain Database ===
-      {
-        pattern: /\b(resep|masak|cuaca|weather|berita|news|gosip|gossip|zodiak|horoscope)\b/i,
-        response: "Maaf, saya hanya bisa membantu pertanyaan seputar data di database yang aktif. Silakan tanyakan tentang data Anda!"
-      },
-      // === Eksploitasi Teknis ===
-      {
-        pattern: /\b(show|tampilkan|lihat)\s+(system\s+prompt|instruksi\s+sistem|kode|source\s*code)/i,
-        response: "Maaf, saya tidak dapat menampilkan instruksi sistem atau kode internal."
-      }
-    ];
-    for (const p of patterns) {
-      if (p.pattern.test(qLower)) return { blocked: true, response: p.response };
-    }
-    return { blocked: false };
-  }
-
-  // ================================================================
-  // DETECT SPECIAL INTENT
-  // ================================================================
-  detectSpecialIntent(qLower) {
-    if (qLower.match(/duplikat|duplicate|judul.*sama|sama.*judul|identik/i))
-      return { type: 'DUPLICATE_CHECK', fuzzy: qLower.includes('mirip') };
-    if (qLower.match(/konflik.*kepemilikan|sengketa|beda.*pemilik/i))
-      return { type: 'OWNERSHIP_CONFLICT' };
-    if (qLower.match(/anomali|data.*tidak.*wajar|inkonsistensi/i))
-      return { type: 'ANOMALY_DETECTION' };
-    if (qLower.match(/data\s+(kosong|null|tidak\s+lengkap|hilang)/i))
-      return { type: 'DATA_QUALITY' };
-    if (qLower.match(/jika|kalau|andai|seandainya/i) && qLower.match(/dijual|diperpanjang|dilepas/i))
-      return { type: 'SCENARIO_ANALYSIS' };
-    if (qLower.match(/prioritas.*ki|strategi.*ki|rekomendasi.*kebijakan/i))
-      return { type: 'STRATEGIC_REC' };
-    return null;
-  }
-
-  // ================================================================
-  // HANDLE SPECIAL INTENTS
-  // ================================================================
-  async handleSpecialIntent(intent, q, userId, lastEntry, progressCallback) {
-    const allActive = dbHelper.getAllActiveConnectionConfigs();
-    switch (intent.type) {
-      case 'DUPLICATE_CHECK': return await this.checkDuplicateTitles(q, userId, allActive, intent.fuzzy);
-      case 'OWNERSHIP_CONFLICT': return await this.checkOwnershipConflict(q, userId, allActive);
-      case 'ANOMALY_DETECTION': return await this.detectAnomalies(q, userId, allActive);
-      case 'DATA_QUALITY': return await this.checkDataQuality(q, userId, allActive);
-      case 'SCENARIO_ANALYSIS': return await this.handleScenarioAnalysis(q, userId, lastEntry);
-      case 'STRATEGIC_REC': return await this.handleStrategicRecommendation(q, userId, allActive);
-      default: return null;
-    }
-  }
-
-  // ================================================================
-  // DATABASE LIST
-  // ================================================================
-  async handleDatabaseList(userId) {
-    const cat = await this.getDatabaseCatalog();
-    const dbList = cat.catalog.map((db, i) =>
-      `${i + 1}. ${db.displayName}\n   Tabel: ${db.tables.join(', ')}`
-    ).join('\n\n');
-    const msg = `Database yang tersedia:\n\n${dbList}\n\nAnda bisa bertanya tentang data di database manapun!`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  // ================================================================
-  // GREETING
-  // ================================================================
-  async handleGreeting(q, userId, lastEntry) {
-    const cat = await this.getDatabaseCatalog();
-    const isAssalam = q.toLowerCase().includes('assalam');
-    const prefix = isAssalam ? 'Waalaikumsalam! ' : 'Halo! ';
-    const dbNames = cat.catalog.map(c => c.displayName).join(', ');
-    const recs = this.getDefaultRecommendations();
-
-    // Cek apakah ada history lama
-    const history = this.getContext(userId);
-    const hasPastHistory = history.length > 0;
-
-    // Deteksi compound greeting: "hai siapa kamu dan bisa apa?"
-    const qLower = q.toLowerCase();
-    const hasSelfIntroQ = /siapa\s+(kamu|anda)|kamu\s+siapa|bisa\s+apa|apa\s+(?:yang\s+)?(?:bisa|dapat)\s+kamu/i.test(qLower);
-
-    // ═══ COMPOUND GREETING + DATABASE QUERY ═══
-    // Deteksi apakah user juga minta data query dalam greeting yang sama
-    // Contoh: "assalamualaikum, bisa kamu tampilkan data paten hanya 5 saja"
-    const dbQueryPart = qLower.match(/(?:dan\s+|,\s*)?(?:bisa\s+(?:kamu|anda|lo|lu|kamuug|kamug)?\s*(?:ug|g)?\s*)?(?:tampil\s*kan|tampilkan|lihat(?:kan)?|tunjuk(?:kan)?|carikan|berikan|show|kasih\s+lihat)\s+(.+)/i)
-      || qLower.match(/(?:dan\s+|,\s*)(?:saya\s+(?:mau|ingin)\s+(?:liat|lihat|tau|tahu)\s+)(.+)/i)
-      || qLower.match(/(?:dan\s+|,\s*)(?:tolong\s+|coba\s+)?(?:tampilkan|lihatkan|tunjukkan)\s+(.+)/i);
-
-    if (dbQueryPart) {
-      // Ada database query di dalam greeting!
-      const dataRequestRaw = dbQueryPart[1]?.trim();
-      if (dataRequestRaw && dataRequestRaw.length > 3) {
-        // Buat greeting singkat + teruskan query data
-        let greetMsg = `${prefix}`;
-        if (hasSelfIntroQ) {
-          greetMsg += `Saya adalah **Asisten Chatbot AI** untuk data **Kekayaan Intelektual (KI)** ITB. `;
-        }
-        greetMsg += `Saya akan langsung memproses permintaan data Anda.\n\n`;
-
-        // Normalize query data: bersihkan dari kata-kata greeting
-        let dataQuery = dataRequestRaw
-          .replace(/^(data\s+)?/i, 'tampilkan data ')
-          .replace(/\bkamuug\b/gi, 'kamu')
-          .replace(/\btampil\s+kan\b/gi, 'tampilkan')
-          .trim();
-
-        debugLog('COMPOUND_GREETING_QUERY', { greeting: prefix, dataQuery });
-        console.log(`🔗 Compound greeting detected: greeting + "${dataQuery}"`);
-
-        // Simpan greeting ke context
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", greetMsg);
-
-        // Proses query data melalui handleDatabaseQuery
-        const dataResult = await this.handleDatabaseQuery(
-          dataQuery, userId, null,
-          { ...lastEntry, skipConfirmation: true, wasCountQuery: false, pendingDataDisplay: false, lastOffset: 0 },
-          null
-        );
-
-        if (dataResult && dataResult.message) {
-          dataResult.message = greetMsg + dataResult.message;
-        }
-        return dataResult;
-      }
-    }
-
-    // ═══ GREETING BIASA (tanpa database query) ═══
-    let msg = `${prefix}Selamat datang di layanan Asisten Chatbot Ai. Saat ini saya siap membantu mengeksplorasi data Anda (sumber aktif: **${dbNames || 'Tidak ada/Offline'}**).`;
-
-    if (hasSelfIntroQ) {
-      msg += `\n\nSaya adalah **Asisten Chatbot AI** yang dirancang khusus untuk membantu Anda menjelajahi dan menganalisis data **Kekayaan Intelektual (KI)** ITB. Berikut yang bisa saya lakukan:`;
-      msg += `\n- 📊 **Menampilkan data** KI seperti Paten, Hak Cipta, Merek, dan Desain Industri`;
-      msg += `\n- 🔢 **Menghitung jumlah** data berdasarkan filter (jenis, tahun, fakultas, inventor)`;
-      msg += `\n- 🔍 **Mencari** inventor, instansi, atau KI tertentu`;
-      msg += `\n- 📈 **Menganalisis** statistik dan ranking (inventor terbanyak, fakultas paling aktif, dll)`;
-    } else if (hasPastHistory) {
-      msg += ` Senang melihat Anda kembali! Saya masih ingat percakapan kita sebelumnya.`;
-    }
-
-    this.addToContext(userId, "user", q);
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  getDefaultRecommendations() {
-    return this.getDynamicRecommendations();
-  }
-
-  // ================================================================
-  // SMART AI RECOMMENDATIONS (CONTEXT-AWARE)
-  // ================================================================
-  async generateSmartRecommendations(q, catalog, context) {
-    try {
-      let dbNames = 'Tidak ada database aktif';
-      let tableList = '';
-      if (catalog && catalog.catalog && catalog.catalog.length > 0) {
-        dbNames = catalog.catalog.map(c => c.displayName).join(', ');
-
-        const detailedSchemas = [];
-        for (const c of catalog.catalog) {
-          const dbName = c.name;
-          if (typeof schemaCache !== 'undefined' && schemaCache[dbName]) {
-            const tablesDesc = Object.entries(schemaCache[dbName]).map(([tName, tInfo]) => {
-              const cols = tInfo.columns.split(',').map(col => col.trim().split(' ')[0]).slice(0, 8).join(', ');
-              return `  Tabel ${tName} (Kolom utama: ${cols})`;
-            }).join('\n');
-            detailedSchemas.push(`Topik: ${c.displayName}\n${tablesDesc}`);
-          } else {
-            detailedSchemas.push(`Topik: ${c.displayName} - Tabel: ${c.tables.join(', ')}`);
-          }
-        }
-        tableList = detailedSchemas.join('\n\n');
-      }
-
-      const prompt = `Kamu adalah AI pembuat daftar rekomendasi pertanyaan. User baru bertanya: "${q}".
-
-TUGAS: Buat persis 3 pertanyaan lanjutan yang CERDAS berdasarkan kolom/Topik yang ADA dari deskripsi berikut:
-${tableList}
-
-PENTING: Buat pertanyaan natural seolah-olah ditanya oleh manusia biasa yang sekadar ingin tahu datanya secara variatif. Pastikan pertanyaan hanya merujuk pada kolom yang tersedia tanpa menyebutkan kota/tempat/contoh rekayasa.
-- JIKA di tabel ada 'status_ki', buat: "Apa saja status dokumen dari jenis Paten?"
-- JIKA di tabel ada 'kategori' dan 'tanggal', buat: "Kapan tanggal pendaftaran terbaru untuk kategori ini?"
-
-ATURAN KETAT:
-1. DILARANG KERAS MENGGUNAKAN NAMA FILE DATABASE (seperti 'itb_db', 'sate_madura_db', 'ujicoba_db', dll) dalam pertanyaan.
-2. JANGAN menggunakan tanda garis bawah (underscore). Ubah 'jenis_ki' menjadi 'jenis KI', dsb.
-3. DILARANG MENGGUNAKAN KATA PENGANTAR/PENJELASAN. Langsung berikan 3 baris pertanyaan murni teks.
-4. DILARANG MENGGUNAKAN NOMOR ATAU BULLET di awal kalimat (1., *, -).
-5. MAKSIMAL 12 KATA per baris.
-6. JANGAN memberikan rekomendasi jika data/kolomnya tidak ada di struktur tabel di atas.`;
-
-      let aiRes = await this.askAI(prompt, 0, 0, 0.4); // slightly higher temp for more creativity
-
-      if (aiRes) {
-        aiRes = this.stripPromptLeak(aiRes);
-      }
-
-      if (aiRes && aiRes.length > 10 && aiRes.includes('\n')) {
-        const lines = aiRes.split('\n')
-          .map(l => l.replace(/^[-*0-9.)]+\s*/, '').replace(/["']/g, '').trim())
-          .filter(l => l.length > 5 && !/berikut|kebijakan|penjelasan|informasi|tugas/i.test(l));
-
-        if (lines.length >= 2) {
-          return lines.slice(0, 3).map((l, i) => `${i + 1}. ${l}`).join('\n');
-        }
-      }
-    } catch (err) {
-      debugLog('REC_ERROR', err.message);
-    }
-
-    // Fallback jika gagal generate AI
-    return this.getDynamicRecommendations();
-  }
-
-  getDynamicRecommendations() {
-    const defaultRecs = [
-      "Berapa total KI yang terdaftar?",
-      "Tampilkan paten terbaru dari FTI",
-      "Siapa dosen dengan Hak Cipta terbanyak?",
-      "Berapa hak cipta yang sudah tersertifikasi?",
-      "Tampilkan tren jumlah paten per fakultas",
-      "Apa saja Desain Industri di tahun 2023?",
-      "Buatkan grafik jenis KI secara keseluruhan",
-      "Tampilkan data hak cipta tahun ini",
-      "Hitung jumlah KI per instansi mitra"
-    ];
-    const shuffled = defaultRecs.sort(() => 0.5 - Math.random());
-    const picked = shuffled.slice(0, 3);
-    return picked.map((r, i) => `${i + 1}. ${r}`).join('\n');
-  }
-
-  async generateNoDataResponse(q) {
-    // Collect schema info for better suggestions
-    let availableInfo = '';
-    try {
-      const catalogs = await this.getDatabaseCatalog();
-      availableInfo = catalogs.summary;
-    } catch (e) {
-      availableInfo = 'Data Kekayaan Intelektual (Paten, Hak Cipta, Merek, Desain Industri)';
-    }
-
-    const prompt = `User bertanya: "${q}" tapi TIDAK ADA data yang relevan ditemukan di database.
-
-INFO DATABASE TERSEDIA:
-${availableInfo}
-
-TUGAS:
-1. Berikan respon JUJUR bahwa data tidak ada.
-2. Jelaskan KENAPA (misal: filter terlalu spesifik atau topik tidak ada di DB).
-3. Berikan 3 saran pertanyaan alternatif yang RELEVAN dengan "${q}" tapi PASTI ada datanya.
-4. Format: Paragraf singkat + List 3 saran.
-5. Gunakan bahasa yang profesional dan membantu.`;
-
-    const res = await this.askAI(prompt, 0, 0, 0.7);
-    if (!res) return `Maaf, tidak ditemukan data untuk "${q}". Cobalah tanyakan hal lain seperti "tampilkan paten terbaru" atau "total data di database".`;
-    return res;
-  }
-
-  extractRecommendations(content) {
-    if (!content) return [];
-    // Match "💡 **Rekomendasi Pertanyaan:**" or variants, with more flexibility on symbols and newlines
-    const match = content.match(/(?:Rekomendasi Pertanyaan|Mungkin Anda ingin mencoba)[:\s*]*\n?([\s\S]+)/i);
-    if (!match) return [];
-
-    // Ambil bagian setelah header, pisahkan per baris
-    const section = match[1].split(/📊|Tip:|Untuk data detail/)[0]; // Berhenti jika ada Tip atau footer
-    const lines = section.split('\n')
-      .map(l => l.replace(/^[\d•\s.*#]+\.?\s*/, '').trim()) // Hapus nomor, bullet, #, *
-      .filter(l => l.length > 6 && l.includes('?')); // Harus berupa pertanyaan (>6 chars, ada tanda tanya)
-
-    return [...new Set(lines)]; // Deduplikasi
-  }
-
-  // ================================================================
-  // PAGINATION — Re-use SQL yang SAMA, hanya ubah OFFSET
-  // ================================================================
-  async handlePagination(userId, lastEntry, progressCallback, isReset = false) {
-    if (!lastEntry?.lastSqlQuery || !lastEntry?.lastDatabase) {
-      return { type: "answer", message: "Tidak ada data sebelumnya untuk dilanjutkan. Silakan ajukan pertanyaan terlebih dahulu." };
-    }
-
-    const newOffset = isReset ? 0 : (lastEntry.lastOffset || 0) + 10;
-    const total = lastEntry.lastTotal || 0;
-
-    // Cek apakah sudah di halaman terakhir
-    if (!isReset && newOffset >= total) {
-      return { type: "answer", message: `Semua **${formatNumber(total)}** data sudah ditampilkan. Ketik "dari awal" untuk kembali ke halaman pertama, atau ajukan pertanyaan baru.` };
-    }
-
-    // Re-use SQL yang sudah ada — update LIMIT dan OFFSET dengan benar
-    let sql = lastEntry.lastSqlQuery;
-    // Hapus LIMIT...OFFSET yang sudah ada dulu, lalu tambah yang baru
-    sql = sql.replace(/\s+LIMIT\s+\d+(\s+OFFSET\s+\d+)?/gi, '').trim();
-    sql += ` LIMIT 10 OFFSET ${newOffset}`;
-
-    debugLog('PAGINATION', { newOffset, total, sql });
-
-    try {
-      const conf = dbHelper.getAllActiveConnectionConfigs().find(c => c.database === lastEntry.lastDatabase);
-      if (!conf) return { type: "answer", message: "Database tidak tersedia." };
-
-      const conn = await mysql.createConnection(conf);
-      const [rows] = await conn.execute(sql);
-      await conn.end();
-
-      if (!rows || rows.length === 0) {
-        return { type: "answer", message: `Tidak ada data lagi setelah halaman ini. Total data: **${formatNumber(total)}**.` };
-      }
-
-      const formatted = await this.formatResponse(
-        lastEntry.originalQuestion || lastEntry.lastQuestion || "data",
-        rows, lastEntry.lastDatabase, newOffset, total
-      );
-
-      this.addToContext(userId, "user", isReset ? "dari awal" : "lanjut");
-      this.addToContext(userId, "assistant", formatted, {
-        lastDatabase: lastEntry.lastDatabase,
-        lastQuestion: lastEntry.lastQuestion,
-        originalQuestion: lastEntry.originalQuestion,
-        lastOffset: newOffset,
-        lastTotal: total,
-        lastSqlQuery: sql,
-        wasCountQuery: false,
-        lastData: rows,
-        lastDataIsGroup: this.isGroupByResult(rows)
-      });
-
-      return { type: "answer", message: formatted };
-    } catch (err) {
-      debugLog('PAGINATION_ERROR', err.message);
-      return { type: "answer", message: "Terjadi kesalahan saat mengambil data berikutnya. Coba ulangi." };
-    }
-  }
-
-  async handleRangePagination(userId, lastEntry, progressCallback, start, end) {
-    if (!lastEntry?.lastSqlQuery || !lastEntry?.lastDatabase) {
-      return { type: "answer", message: "Tidak ada data sebelumnya. Silakan ajukan pertanyaan terlebih dahulu." };
-    }
-
-    const offset = Math.max(0, start - 1);
-    const limit = Math.min(50, end - start + 1);
-    const total = lastEntry.lastTotal || 0;
-
-    // Re-use SQL — ganti LIMIT dan OFFSET
-    let sql = lastEntry.lastSqlQuery;
-    sql = sql.replace(/LIMIT\s+\d+(\s+OFFSET\s+\d+)?/i, '');
-    sql = sql.trim() + ` LIMIT ${limit} OFFSET ${offset}`;
-
-    debugLog('RANGE_PAGINATION', { offset, limit, total, sql });
-
-    try {
-      const conf = dbHelper.getAllActiveConnectionConfigs().find(c => c.database === lastEntry.lastDatabase);
-      if (!conf) return { type: "answer", message: "Database tidak tersedia." };
-
-      const conn = await mysql.createConnection(conf);
-      const [rows] = await conn.execute(sql);
-      await conn.end();
-
-      if (!rows || rows.length === 0) {
-        return { type: "answer", message: `Tidak ada data pada rentang ${start}-${end}. Total data: **${formatNumber(total)}**.` };
-      }
-
-      const formatted = await this.formatResponse(
-        lastEntry.originalQuestion || lastEntry.lastQuestion || "data",
-        rows, lastEntry.lastDatabase, offset, total
-      );
-
-      this.addToContext(userId, "user", `data ${start}-${end}`);
-      this.addToContext(userId, "assistant", formatted, {
-        lastDatabase: lastEntry.lastDatabase,
-        lastQuestion: lastEntry.lastQuestion,
-        originalQuestion: lastEntry.originalQuestion,
-        lastOffset: offset,
-        lastTotal: total,
-        lastSqlQuery: sql,
-        wasCountQuery: false,
-        lastData: rows,
-        lastDataIsGroup: this.isGroupByResult(rows)
-      });
-
-      return { type: "answer", message: formatted };
-    } catch (err) {
-      debugLog('RANGE_PAGINATION_ERROR', err.message);
-      return { type: "answer", message: "Terjadi kesalahan saat mengambil data. Coba ulangi." };
-    }
-  }
-
-  // ================================================================
-  // QUERY DATABASE — INTI SISTEM
-  // ================================================================
-  async handleDatabaseQuery(q, userId, dbCatalog, lastEntry, progressCallback, targetDbs = null, silent = false, overrideSql = null, targetColumns = null) {
-    const allActive = dbHelper.getAllActiveConnectionConfigs();
-    const cfgs = (targetDbs && targetDbs.length > 0)
-      ? allActive.filter(c => targetDbs.includes(c.database))
-      : allActive;
-
-    const offset = lastEntry?.lastOffset || 0;
-    const context = this.getContext(userId);
-    const contextStr = this.buildConversationContext(context);
-    const allResults = [];
-
-    for (const conf of cfgs) {
-      let sql = overrideSql;
-      try {
-        const conn = await mysql.createConnection(conf);
-        await this.ensureSchemaCache(conn, conf.database);
-        const schemaInfo = schemaCache[conf.database];
-
-        // Generate SQL
-        const customLimit = lastEntry?.customLimit || null;
-        let cacheUsed = false;
-        if (!sql) {
-          // ═══ QUERY CACHE — Cek apakah ada SQL tersimpan untuk query mirip ═══
-          const cached = queryCache.find(q, conf.database);
-          if (cached && offset === 0) {
-            sql = cached.sql;
-            cacheUsed = true;
-            debugLog(`SQL_FROM_CACHE [${conf.database}]`, sql);
-            console.log(`⚡ SQL from cache (saved ~2s API call)`);
-          } else {
-            sql = await this.generateSQL(q, conf.database, schemaInfo, contextStr, offset, customLimit, userId);
-            debugLog(`SQL_GENERATED [${conf.database}]`, sql);
-          }
-        } else {
-          debugLog(`SQL_OVERRIDE_USED [${conf.database}]`, sql);
-        }
-
-        if (!sql) {
-          await conn.end();
-          continue;
-        }
-
-        // ═══ SQL VALIDATION — Validasi terhadap schema sebelum eksekusi ═══
-        sqlValidator.setSchemaCache(schemaCache);
-        const validation = sqlValidator.validate(sql, conf.database);
-        debugLog(`SQL_VALIDATION [${conf.database}]`, sqlValidator.summarize(validation));
-
-        if (!validation.valid) {
-          // Retry: regenerate SQL dengan info error
-          debugLog('SQL_INVALID_RETRYING', validation.errors);
-          const retrySQL = await this.generateSQL(
-            q + ` [PERBAIKI SQL: ${validation.errors.slice(0, 2).join('; ')}]`,
-            conf.database, schemaInfo, contextStr, offset, customLimit
-          );
-          if (retrySQL) {
-            const retryValidation = sqlValidator.validate(retrySQL, conf.database);
-            if (retryValidation.valid) {
-              sql = retryValidation.fixedSQL || retrySQL;
-              debugLog('SQL_RETRY_SUCCESS', sql);
-            } else {
-              debugLog('SQL_RETRY_FAILED', retryValidation.errors);
-              await conn.end();
-              continue;
-            }
-          } else {
-            await conn.end();
-            continue;
-          }
-        } else if (validation.fixedSQL && validation.fixedSQL !== sql) {
-          // SQL valid tapi ada auto-fix (misal: kolom typo diperbaiki)
-          sql = validation.fixedSQL;
-          debugLog('SQL_AUTO_FIXED', sql);
-          if (validation.warnings.length > 0) {
-            debugLog('SQL_WARNINGS', validation.warnings);
-          }
-        }
-
-        // Eksekusi
-        const [rows] = await conn.execute(sql);
-        await conn.end();
-
-        if (rows.length > 0) {
-          // Hitung total untuk pagination secara presisi
-          let total = rows.length;
-
-          // Untuk COUNT results, gunakan VALUE count sebagai total (bukan rows.length=1)
-          const countKeys = Object.keys(rows[0]);
-          const isCountLike = rows.length === 1 && countKeys.length <= 2 &&
-            (countKeys.some(k => {
-              const kl = k.toLowerCase();
-              return kl.includes('count') || kl === 'total' || kl === 'jumlah' || kl.includes('avg') || kl.includes('sum');
-            }) || (countKeys.length === 1 && typeof rows[0][countKeys[0]] === 'number'));
-
-          if (isCountLike) {
-            // Ambil value COUNT langsung sebagai total
-            const countKey = countKeys.find(k => {
-              const kl = k.toLowerCase();
-              return kl.includes('count') || kl === 'total' || kl === 'jumlah';
-            }) || countKeys[0];
-            total = Number(rows[0][countKey]) || rows.length;
-            debugLog('COUNT_VALUE_DETECTED', { key: countKey, value: total });
-          } else {
-            // Non-COUNT: hitung total dengan subquery untuk pagination
-            try {
-              const connCount = await mysql.createConnection(conf);
-              const cleanSQL = sql.replace(/LIMIT \d+( OFFSET \d+)?/gi, '');
-              const countSQL = `SELECT COUNT(*) AS total FROM (${cleanSQL}) AS subquery_count`;
-              const [[countRow]] = await connCount.execute(countSQL);
-              total = countRow?.total || rows.length;
-              await connCount.end();
-            } catch (e) { /* skip count error */ }
-          }
-
-          allResults.push({ database: conf.database, data: rows, total, query: sql });
-
-          // ═══ CACHE SAVE — Simpan SQL berhasil untuk dipakai lagi ═══
-          if (!cacheUsed) {
-            queryCache.set(q, conf.database, sql, total);
-            debugLog('CACHE_SAVED', { query: q, database: conf.database });
-          }
-
-          // ═══ FILTER STACKING — Update active filters dari SQL berhasil ═══
-          try {
-            const sessionObj = contextManager.getSession(userId);
-            if (sessionObj) {
-              sessionObj.updateFiltersFromSQL(sql);
-              sessionObj.updateFiltersFromQuery(q);
-              debugLog('FILTERS_UPDATED', sessionObj.activeFilters);
-            }
-          } catch (filterErr) { /* silent */ }
-        }
-      } catch (err) {
-        debugLog(`ERROR [${conf.database}]`, err.message);
-        // ═══ ERROR MEMORY — Catat kegagalan SQL ═══
-        if (sql) {
-          errorMemory.recordFailure(q, sql, err.message);
-        }
-      }
-    }
-
-    // Tidak ada hasil
-    if (!allResults.length) {
-      const msg = await this.generateNoDataResponse(q);
-      this.addToContext(userId, "user", q);
-      this.addToContext(userId, "assistant", msg);
-      return { type: "answer", message: msg };
-    }
-
-    // ═══ SMART DB SELECTION LOGIC ═══
-    // Jika ada hasil dari >1 database aktif, pilih otomatis yang paling relevan
-    if (allResults.length > 1) {
-      const qLower = q.toLowerCase();
-
-      // Kriteria 1: User menyebut eksplisit nama database (misal "di itb", "data itb")
-      const explicitDb = allResults.find(r => {
-        const dbBaseMatch = r.database.replace(/_db$/, '').toLowerCase();
-        const dbNameMatch = this.formatDbName(r.database).toLowerCase();
-        return qLower.includes(dbBaseMatch) || qLower.includes(dbNameMatch);
-      });
-
-      if (explicitDb) {
-        debugLog('SMART_DB_SEL_EXPLICIT', explicitDb.database);
-        allResults.splice(0, allResults.length, explicitDb);
-      } else {
-        // Kriteria 2: Pilih yang menghasilkan data paling banyak
-        allResults.sort((a, b) => b.total - a.total);
-        debugLog('SMART_DB_SEL_MOST_DATA', allResults[0].database);
-        allResults.splice(1); // Hanya pertahankan top 1
-      }
-    }
-
-    // Hasil dari satu database (sekarang selalu akan diproses)
-    if (allResults.length === 1) {
-      const { database, data, total, query } = allResults[0];
-      const isCount = this.isCountResult(data);
-      const shouldSkipConfirmation = lastEntry?.skipConfirmation || false;
-
-      // Deteksi apakah user sudah secara EKSPLISIT minta tampilkan data
-      const isExplicitRequest = /^(tampilkan|tunjukkan|lihatkan|liatkan|show|daftar(kan)?|list|buka|cari(kan)?|lihat(kan)?|liat(kan)?|perlihatkan|kasih lihat|saya mau lihat|saya ingin lihat|saya mau tampil|saya ingin tampil|ya tampilkan|iya tampilkan|data\s+ki|ki\s+dari|ki\s+tahun|tampilkan\s+data|berikan\s+data|ada\s+berapa)/i.test(q)
-        || /^(saya\s+mah?|ane\s+mau?|aku\s+mau|saya\s+mau)\s+(liat|lihat|tampil)/i.test(q)
-        || /\b(saya\s+mau\s+(?:liat|lihat)|coba\s+tampilkan|boleh\s+liat)\b/i.test(q)
-        || /\bada\s+(?:\w+\s+)?apa\s+saja\b/i.test(q)
-        || /\bapa\s+saja\b/i.test(q)
-        || /\b(?:apakah\s+)?ada\s+(?:ki|KI|data|paten|hak cipta|merek)\s+(?:yang\s+)?(?:dari\s+)?(?:tahun\s+)?\d{4}\b/i.test(q)
-        || /\bdata\s+ki\s+(?:tahun\s+)?\d{4}\b/i.test(q);
-
-      // === STEP KONFIRMASI: SKIP dalam banyak kondisi ===
-      // - isCount: Langsung tampilkan hitungan tanpa tanya
-      // - isSmallResult: Data ≤ 10 langsung tampil
-      // - isExplicitRequest: User sudah jelas minta data
-      const isSmallResult = total <= 10;
-      if (!isCount && !shouldSkipConfirmation && !isExplicitRequest && !isSmallResult && !silent && offset === 0 && data.length > 0) {
-        // Generate pesan konfirmasi dengan AI
-        const confirmPrompt = `Kamu adalah Asisten Chatbot Ai yang cerdas dan ramah. Buatkan pesan KONFIRMASI singkat sebelum menampilkan data.
-
-User meminta: "${q}"
-Sistem menemukan: ${total} data relevan.
-
-DATA DOMAIN:
-- Database ini berisi data "Kekayaan Intelektual" (KI) seperti Paten, Hak Cipta, Merek, Desain Industri.
-- DILARANG KERAS: "KI" BUKAN "Kecerdasan Buatan". "KI" = HANYA "Kekayaan Intelektual".
-
-INSTRUKSI:
-1. Ulangi/konfirmasi pertanyaan user secara natural (misal: "Anda menanyakan tentang paten di ITB...").
-2. Sebutkan jumlah data yang ditemukan: "Saya menemukan ${total} data yang relevan."
-3. JANGAN langsung tampilkan datanya. Cukup tanyakan apakah user ingin melihat daftar datanya.
-4. Tulis dalam 2-3 kalimat saja, singkat dan jelas.
-5. JANGAN PERNAH menyebut angka selain ${total}.
-6. JANGAN tampilkan nama database/tabel teknis.
-7. JANGAN mengarang atau menambahkan informasi yang tidak ada di pertanyaan user.
-8. VALIDASI: Jika user mencari fakultas (misal FMIPA), pastikan kamu menyebut FMIPA, jangan instansi lain.
-9. DILARANG KERAS menyebut "Kecerdasan Intelektual".
-10. Akhiri dengan pertanyaan: "Apakah Anda ingin saya menampilkan datanya?" atau sejenisnya.`;
-
-        const confirmMsg = await this.askAI(confirmPrompt, 0, 0, 0.3); // High grounding
-        let finalConfirmMsg = confirmMsg && confirmMsg.length > 10 && confirmMsg.length < 600
-          ? this.stripPromptLeak(confirmMsg)
-          : `Anda menanyakan tentang: **"${q}"**.\n\nSaya menemukan **${formatNumber(total)}** data yang relevan.\n\nApakah Anda ingin saya menampilkan daftar datanya?`;
-
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", finalConfirmMsg, {
-          lastDatabase: database,
-          lastMultipleDatabases: allResults,
-          lastQuestion: q,
-          originalQuestion: lastEntry?.originalQuestion || q,
-          lastOffset: 0,
-          lastTotal: total,
-          lastSqlQuery: query,
-          wasCountQuery: false,
-          pendingDataDisplay: true // Flag untuk menunggu konfirmasi user
-        });
-        return { type: "answer", message: finalConfirmMsg };
-      }
-
-      // === TAMPILKAN DATA (setelah konfirmasi atau skip) ===
-      let formatted = await this.formatResponse(q, data, database, offset, total, targetColumns);
-
-      // Tambahkan ringkasan/kalimat pengantar pintar jika ini adalah halaman pertama list (LIST DATA, bukan hitungan)
-      // FIX: Aktifkan untuk data banyak (>5) ATAU data tunggal (1) untuk efek conversational
-      if (offset === 0 && (data.length > 5 || data.length === 1) && !isCount) {
-        const sessionObj = contextManager.getSession(userId);
-        const isExistenceCheck = sessionObj?._semanticMeta?.isExistenceCheck || sessionObj?._enrichedIntent?.isExistenceCheck || false;
-
-        const sampleData = JSON.stringify(data.slice(0, 3));
-        const isGroupBy = this.isGroupByResult(data);
-        const grandTotal = isGroupBy ? data.reduce((s, r) => s + Number(Object.values(r).find(v => typeof v === 'number') || 0), 0) : total;
-
-        const summaryPrompt = `Buatkan kalimat pembuka sangat SINGKAT dan RAMAH (maks 1 kalimat) sebelum data ditampilkan.
-
-User meminta: "${q}"
-${isGroupBy ? `TUGAS UTAMA: Sebutkan angka pasti ini di dalam kalimat: Ditemukan total ${grandTotal} data yang terbagi dalam ${total} kategori.` : `TUGAS UTAMA: Sebutkan angka pasti ini di dalam kalimat: Ditemukan ${total} data.`}
-Sampel data (hanya untuk konteks penamaan jenisnya): ${sampleData}
-
-ATURAN KETAT:
-1. JANGAN sebut nama database teknis (underscore).
-2. DILARANG KERAS merubah angka yang saya berikan di TUGAS UTAMA. Dilarang melakukan penjumlahan atau perhitungan sendiri.
-3. DILARANG KERAS menyebut "AI", "Kecerdasan Buatan", atau membual. Langsung jawab isi datanya.
-4. "KI" = "Kekayaan Intelektual". JANGAN sebut "Kecerdasan Intelektual".
-5. DILARANG menggunakan heading (#). Langsung kalimat biasa.
-6. JANGAN menuliskan "Berikut adalah penjelasannya:".`;
-        const summary = silent ? null : await this.askAI(summaryPrompt, 0, 0, 0.3);
-        if (summary && summary.length > 5 && summary.length < 800) {
-          const cleanSummary = this.stripPromptLeak(summary);
-          formatted = cleanSummary + '\n\n' + formatted;
-        }
-      }
-
-      // ════════════════════════════════════════════════════════════════
-      // PROACTIVE AUTO-BREAKDOWN INJECTION (Pintar Rincikan Data Count)
-      // ════════════════════════════════════════════════════════════════
-      if (isCount && total > 20 && !silent) {
-        try {
-          // Cari kolom kategori untuk pengelompokan. Misal: jenis_ki jika itu db KI ITB
-          const tbNames = Object.keys(schemaCache[database] || {});
-          let categoryCol = null;
-          for (const t of tbNames) {
-            if (/jenis_ki/i.test(schemaCache[database][t].columns)) {
-              categoryCol = 'jenis_ki'; break;
-            }
-          }
-
-          if (categoryCol && query && !/GROUP BY/i.test(query) && /SELECT\s+COUNT\(\*\)/i.test(query)) {
-            let breakdownQuery = query.replace(/SELECT\s+COUNT\(\*\)(?:\s+AS\s+\w+)?/i, `SELECT ${categoryCol}, COUNT(*) as total`).trim();
-            // Hapus LIMIT/ORDER BY yang mungkin tersisa
-            breakdownQuery = breakdownQuery.replace(/\s+LIMIT\s+\d+/i, '').replace(/\s+ORDER BY.*$/i, '');
-            breakdownQuery += ` GROUP BY ${categoryCol} ORDER BY total DESC LIMIT 5`;
-
-            const conn = await mysql.createConnection(this.dbConfig[database]);
-            const [brData] = await conn.execute(breakdownQuery);
-            await conn.end();
-
-            if (brData && brData.length > 1) {
-              const breakdownText = brData.map(r => `  • **${formatNumber(r.total)}** data ${formatSnakeCaseValue(r[categoryCol])}`).join('\n');
-              formatted = formatted.replace(
-                'Apakah Anda ingin melihat daftar datanya',
-                `📌 **Rincian Proporsi:**\n${breakdownText}\n\nApakah Anda ingin melihat daftar datanya`
-              );
-            }
-          }
-        } catch (e) {
-          debugLog('AUTO_BREAKDOWN_FAILED', e.message);
-        }
-      }
-
-      // ═══ RESPONSE SCORING — Auto-grade kualitas respons ═══
-      const qualityScore = responseScorer.score(formatted, q, data, total);
-      debugLog('RESPONSE_QUALITY', { grade: qualityScore.grade, score: qualityScore.score, issues: qualityScore.issues });
-      if (qualityScore.grade === 'D' || qualityScore.grade === 'F') {
-        console.log(`⚠️ Low quality response (grade ${qualityScore.grade}): ${qualityScore.issues.join(', ')}`);
-      }
-
-      if (!silent) {
-        // Simpan lastDistinctValues jika hasil dari DISTINCT query
-        const isDistinctQuery = /SELECT\s+DISTINCT\s+(\S+)/i.test(query);
-        let lastDistinctValues = null;
-        if (isDistinctQuery && data.length > 0 && data.length <= 20) {
-          const distinctColMatch = query.match(/SELECT\s+DISTINCT\s+(\S+)/i);
-          const distinctCol = distinctColMatch?.[1];
-          if (distinctCol) {
-            lastDistinctValues = {
-              column: distinctCol,
-              values: data.map(r => Object.values(r)[0]).filter(Boolean)
-            };
-            debugLog('DISTINCT_VALUES_SAVED', lastDistinctValues);
-          }
-        }
-
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", formatted, {
-          lastDatabase: database,
-          lastMultipleDatabases: allResults,
-          lastQuestion: q,
-          originalQuestion: lastEntry?.originalQuestion || q,
-          lastOffset: offset,
-          lastTotal: total,
-          lastSqlQuery: query,
-          wasCountQuery: isCount,
-          lastData: data,
-          lastDataIsGroup: this.isGroupByResult(data),
-          lastDistinctValues  // Untuk smart follow-up setelah DISTINCT
-        });
-
-        // ─── LAYER 4: Record keberhasilan ───────────────────────────
-        adaptiveLearner.recordSuccess(q, q, query, database, total, Date.now());
-      }
-      return { type: "answer", message: formatted, data };
-    }
-
-    // Hasil dari banyak database — minta user pilih
-    const msg = `Ditemukan data di beberapa database. Pilih yang ingin ditampilkan:\n\n` +
-      allResults.map((r, i) => `${i + 1}. ${this.formatDbName(r.database)} (${r.total} data)`).join('\n');
-
-    this.addToContext(userId, "user", q);
-    if (!silent) {
-      this.addToContext(userId, "assistant", msg, {
-        pendingDatabaseSelection: {
-          databases: allResults.map(r => r.database),
-          allResults,
-          originalQuestion: q
-        }
-      });
-    }
-    return { type: "database_selection", message: msg };
-  }
-
-  // ================================================================
-  // GENERATE SQL — lebih akurat dengan chain-of-thought + few-shot + error memory
-  // ================================================================
-  async generateSQL(q, database, schemaInfo, contextStr, offset = 0, customLimit = null, userId = null) {
-    const tableNames = Object.keys(schemaInfo);
-    const schemaSummary = tableNames.map(t => {
-      const info = schemaInfo[t];
-      const sampleRow = info.sample_rows?.[0] || {};
-      return `Tabel: ${t}\nKolom: ${info.columns}\nContoh data: ${JSON.stringify(sampleRow)}`;
-    }).join('\n\n');
-
-    const limit = customLimit || 10;
-
-    // ═══ FEW-SHOT EXAMPLES — Contoh query berhasil dari learning data ═══
-    let fewShotSection = '';
-    try {
-      const successful = (queryPatternsData.queries || [])
-        .filter(p => p.successCount > 0 && (p.database === database || p.database === 'success'))
-        .slice(0, 5)
-        .map(p => `- "${p.query}"`)
-        .join('\n');
-      if (successful) {
-        fewShotSection = `\nCONTOH PERTANYAAN YANG BERHASIL DI DATABASE INI:\n${successful}\nGunakan pola serupa untuk generate SQL.\n`;
-      }
-    } catch (e) { /* silent */ }
-
-    // ═══ ERROR MEMORY — Peringatan dari SQL yang pernah gagal ═══
-    const errorWarnings = errorMemory.getWarnings(q);
-
-    // ═══ LAYER 3: INTENT ENRICHMENT HINTS — Petunjuk SQL dari nuansa query ═══
-    const sessionObj = userId ? contextManager.getSession(userId) : null;
-    const enrichedIntent = sessionObj?._enrichedIntent || intentEnricher.enrich(q, {});
-    const sqlHints = intentEnricher.toSQLHint(enrichedIntent);
-
-    // ═══ FILTER STACKING — Sertakan filter aktif dari query sebelumnya ═══
-    const filterContext = sessionObj ? sessionObj.getFilterHints() : '';
-
-    // Deteksi apakah ini merupakan database Kekayaan Intelektual (KI) ITB
-    const isKIDatabase = Object.values(schemaInfo).some(t => t.columns.toLowerCase().includes('jenis_ki') || t.columns.toLowerCase().includes('status_ki') || t.columns.toLowerCase().includes('id_sertifikat'));
-
-    let domainInstructions = '';
-
-    if (isKIDatabase) {
-      domainInstructions = `
-CATATAN PENTING DOMAIN:
-    - "KI" atau "ki" adalah singkatan dari "Kekayaan Intelektual" — BUKAN kecerdasan buatan
-      - Ini adalah database KI ITB yang berisi data Paten, Hak Cipta, Merek, dan Desain Industri
-        - Kolom jenis_ki berisi salah satu: 'Paten', 'Hak Cipta', 'Merek', 'Desain Industri'
-
-PANDUAN PEMBUATAN QUERY(KHUSUS KI ITB):
-    1. FILTER TAHUN — ATURAN PALING KRITIS(WAJIB DIIKUTI):
-    - Jika user menyebut tahun tertentu(misal: "2020", "tahun 2020", "data ki 2017"), WAJIB tambahkan kondisi:
-    WHERE(YEAR(tgl_pendaftaran) = TAHUN_TERSEBUT)
-      - JANGAN PERNAH menampilkan data dari tahun lain selain yang diminta. Filter pada tgl_pendaftaran saja.
-   - Jika SQL hint sudah menyebut "Filter tahun: YEAR(...) = X", gunakan PERSIS kondisi tersebut.
-   - Contoh BENAR: "jumlah ki 2020" → SELECT COUNT(*) AS total FROM ...WHERE(YEAR(tgl_pendaftaran) = 2020)
-      - Contoh BENAR: "daftar ki 2020" → SELECT * FROM ...WHERE(YEAR(tgl_pendaftaran) = 2020) LIMIT 10
-        - Contoh BENAR: "data ki 2017" → SELECT * FROM data_import WHERE(YEAR(tgl_pendaftaran) = 2017) LIMIT 10
-          - Contoh SALAH: Tidak menambahkan WHERE tahun sama sekali atau pakai OR tgl_sertifikasi.
-
-2. ENTITY vs RECORD — ATURAN PENTING:
-    A.Jika user menanyakan DAFTAR TIPE / KATEGORI / JENIS yang ADA(bertanya "apa saja jenisnya", "ada jenis apa", "ada apa saja instansi"):
-      → Gunakan SELECT DISTINCT[kolom_kategori]
-      → Contoh: "apa saja jenis ki?" → SELECT DISTINCT jenis_ki FROM ...
-      → Contoh: "ada apa saja instansi di ki" → SELECT DISTINCT nama_instansi_inventor FROM ... LIMIT 50
-      → Contoh: "daftar instansi" → SELECT DISTINCT nama_instansi_inventor FROM ... LIMIT 50
-
-    B.Jika user ingin MENGHITUNG jumlah data dengan FILTER jenis tertentu("ada berapa ki jenis paten", "berapa paten", "jumlah ki dengan jenis X", "ada berapa KI jenis paten"):
-      → Gunakan SELECT COUNT(*) AS total FROM ... WHERE jenis_ki LIKE '%Paten%'
-      → WAJIB gunakan WHERE jenis_ki! JANGAN menghitung semua data tanpa filter!
-      → Contoh: "ada berapa KI jenis paten?" → SELECT COUNT(*) AS total FROM data_import WHERE jenis_ki LIKE '%Paten%'
-      → Contoh: "ada berapa ki dengan jenis paten?" → SELECT COUNT(*) AS total FROM data_import WHERE jenis_ki LIKE '%Paten%'
-      → Contoh: "berapa hak cipta yang ada?" → SELECT COUNT(*) AS total FROM data_import WHERE jenis_ki LIKE '%Hak Cipta%'
-      → Contoh: "total merek" → SELECT COUNT(*) AS total FROM data_import WHERE jenis_ki LIKE '%Merek%'
-
-    C.Jika user ingin MELIHAT DATA / RECORD AKTUAL dari tipe tertentu("tampilkan merek dan paten", "lihat data ki jenis paten", "yang hak cipta"):
-      → Gunakan SELECT * ... WHERE jenis_ki LIKE '%Paten%' LIMIT 10
-      → Atau multi - jenis: WHERE jenis_ki IN('Merek', 'Paten') LIMIT 10
-      → JANGAN PERNAH gunakan SELECT DISTINCT untuk kasus ini!
-      → Contoh: "tampilkan hak cipta" → SELECT * FROM ... WHERE jenis_ki LIKE '%Hak Cipta%' LIMIT 10
-      → Contoh: "kalau yang paten" → SELECT * FROM ... WHERE jenis_ki LIKE '%Paten%' LIMIT 10
-      → Contoh: "saya mau liat data yang jenisnya paten" → SELECT * FROM ... WHERE jenis_ki LIKE '%Paten%' LIMIT 10
-
-    D.Jika user menanyakan COUNT orang / entitas berbeda(berapa jenis, ada berapa instansi berbeda):
-      → Gunakan COUNT(DISTINCT kolom)
-      → Contoh: "ada berapa jenis ki?" → SELECT COUNT(DISTINCT jenis_ki) AS total FROM ...
-      → Contoh: "berapa banyak instansi berbeda" → SELECT COUNT(DISTINCT nama_instansi_inventor) AS total FROM ...
-
-    E.Jika user minta TOTAL / JUMLAH INVENTOR(orang yang membuat KI):
-      → SELALU gunakan COUNT(DISTINCT inventor) karena inventor bisa muncul di banyak KI
-      → "total inventor KI" → SELECT COUNT(DISTINCT inventor) AS total FROM data_import
-      → "total inventor" → SELECT COUNT(DISTINCT inventor) AS total FROM data_import
-      → "berapa banyak inventor" → SELECT COUNT(DISTINCT inventor) AS total FROM data_import
-      → "jumlah inventor" → SELECT COUNT(DISTINCT inventor) AS total FROM data_import
-      → JANGAN gunakan SELECT COUNT(*) untuk menghitung inventor! Itu menghitung SEMUA baris, bukan orang unik.
-
-      F.Jika user minta daftar nama orang / identitas:
-      → SELECT DISTINCT inventor, fakultas_inventor FROM ...
-      → Contoh: "siapa saja inventor dari FMIPA" → SELECT DISTINCT inventor, fakultas_inventor FROM ... WHERE fakultas_inventor LIKE '%FMIPA%' LIMIT 50
-
-    H. INSTRUKSI SELECT * (SANGAT PENTING):
-       - Jika user menyebut "data lengkap", "seluruh baris", "semua kolom", "detail", "rincian", atau "SELECT *", MAKSIMALKAN penggunaan SELECT *.
-       - JANGAN HANYA menampilkan satu kolom kategori jika user meminta data aktual.
-       - Contoh: "tampilkan data yang jenisnya merek" → SELECT * FROM ... WHERE jenis_ki LIKE '%Merek%' LIMIT 10
-       - Contoh: "tampilkan seluruh baris data lengkap untuk fakultas FTI" → SELECT * FROM ... WHERE fakultas_inventor LIKE '%FTI%' LIMIT 10
-
-    3. PAHAMI SCHEMA & TOLERANSI TYPO: Gunakan hanya tabel dan kolom yang ada di SCHEMA.Terjemahkan makna ketikan typo secara cerdas.
-
-4. FILTER FAKULTAS — ATURAN PENTING:
-    - Singkatan seperti FTI, FMIPA, STEI, FTMD, SITH, FITB, FSRD, SBM, FTTM, SF, SAPPK adalah FAKULTAS
-      - Kolom fakultas di DB: fakultas_inventor(BUKAN kolom lain!)
-        - Kolom ini multi - value: bisa berisi "(FTI)" atau text dengan nama fakultas
-          - SELALU gunakan LIKE: WHERE fakultas_inventor LIKE '%FTI%'
-            - Contoh: "ki yang fti" → SELECT * FROM data_import WHERE fakultas_inventor LIKE '%FTI%' LIMIT 10
-              - Contoh: "ki yang fti saja" → SELECT * FROM data_import WHERE fakultas_inventor LIKE '%FTI%' LIMIT 10
-                - Contoh: "saya mau liat ki yang fti saja" → SELECT * FROM data_import WHERE fakultas_inventor LIKE '%FTI%' LIMIT 10
-                  - Contoh: "ada berapa ki dari FTI?" → SELECT COUNT(*) AS total FROM data_import WHERE fakultas_inventor LIKE '%FTI%'
-
-    5. CONTOH KONKRET JENIS QUERY:
-    A.PENCARIAN ORANG / INVENTOR:
-    - "KI dari Anugrah Sabdono" → SELECT * FROM ... WHERE inventor LIKE '%Anugrah Sabdono%' LIMIT 10
-      - "Anugrah Sabdono memegang ki apa saja" → SELECT judul, jenis_ki, status_ki, tgl_pendaftaran, inventor FROM ... WHERE inventor LIKE '%Anugrah%Sabdono%' LIMIT 10
-        - "paten milik Eko Mursito" → SELECT * FROM ... WHERE inventor LIKE '%Eko Mursito%' AND jenis_ki LIKE '%Paten%' LIMIT 10
-          - "inventor bernama Budi" → SELECT * FROM ... WHERE inventor LIKE '%Budi%' LIMIT 10
-            - "KI yang melibatkan Prof" → SELECT * FROM ... WHERE inventor LIKE '%Prof%' LIMIT 10
-              - "ada berapa ki milik Eko" → SELECT COUNT(*) AS total FROM ... WHERE inventor LIKE '%Eko%'
-                - "siapa saja inventor dari FMIPA" → SELECT DISTINCT inventor, fakultas_inventor FROM ... WHERE fakultas_inventor LIKE '%FMIPA%' LIMIT 50
-                - "ada berapa ki dari fakultas fmipa" → SELECT COUNT(*) AS total FROM ... WHERE fakultas_inventor LIKE '%FMIPA%'
-                - "tampilkan paten fmipa" → SELECT * FROM ... WHERE fakultas_inventor LIKE '%FMIPA%' AND jenis_ki LIKE '%Paten%' LIMIT 10
-                  - "inventor yang sudah meninggal" → SELECT * FROM ... WHERE inventor LIKE '%(alm)%' LIMIT 10
-                    - "inventor almarhum" → SELECT * FROM ... WHERE inventor LIKE '%(alm)%' LIMIT 10
-                      - PENTING: Untuk nama orang, SELALU gunakan LIKE '%Nama%' karena kolom inventor berisi banyak nama dalam satu cell.
-   - PENTING: Inventor yang sudah meninggal ditandai dengan "(alm)" di depan namanya.
-   - PENTING: Jika user mencari fakultas (FMIPA, FTI, dll), cari di kolom "fakultas_inventor".
-   - PENTING: "KI" = "Kekayaan Intelektual" (Intelektual Property), BUKAN "Kecerdasan Intelektual" (IQ). JANGAN PERNAH gunakan istilah "Kecerdasan Intelektual" dalam komentar SQL.
-
-      B.PENCARIAN BERDASARKAN STATUS:
-    - "paten yang sudah diberi paten" → SELECT * FROM ... WHERE status_ki LIKE '%Diberi Paten%' LIMIT 10
-      - "ki yang masih ajuan" → SELECT * FROM ... WHERE status_ki LIKE '%Ajuan%' LIMIT 10
-        - "hak cipta tersertifikasi" → SELECT * FROM ... WHERE jenis_ki LIKE '%Hak Cipta%' AND status_ki LIKE '%Tersertifikasi%' LIMIT 10
-          - "berapa ki yang sudah tersertifikasi" → SELECT COUNT(*) AS total FROM ... WHERE status_ki LIKE '%Tersertifikasi%'
-            - "status dokumen masa pengumuman" → SELECT * FROM ... WHERE status_dokumen LIKE '%Masa Pengumuman%' LIMIT 10
-              - "ki yang statusnya permohonan" → SELECT * FROM ... WHERE status_dokumen LIKE '%permohonan%' LIMIT 10
-
-    C.PENCARIAN BERDASARKAN KOLABORASI / MITRA:
-    - "ki yang mitranya ITB" → SELECT * FROM ... WHERE mitra_kepemilikan LIKE '%ITB%' LIMIT 10
-      - "KI kolaborasi dengan Universitas Padjadjaran" → SELECT * FROM ... WHERE mitra_kepemilikan LIKE '%Padjadjaran%' OR nama_instansi_inventor LIKE '%Padjadjaran%' LIMIT 10
-        - "ada mitra selain ITB?" → SELECT DISTINCT mitra_kepemilikan FROM ... WHERE mitra_kepemilikan NOT LIKE '%Institut Teknologi Bandung%' LIMIT 50
-          - "daftar mitra kepemilikan" → SELECT DISTINCT mitra_kepemilikan FROM ... LIMIT 50
-
-    D.PENCARIAN BERDASARKAN JUDUL / KONTEN:
-    - "cari KI tentang turbin angin" → SELECT * FROM ... WHERE judul LIKE '%turbin%angin%' LIMIT 10
-      - "paten yang berhubungan dengan energi" → SELECT * FROM ...WHERE(judul LIKE '%energi%' OR abstrak LIKE '%energi%') AND jenis_ki LIKE '%Paten%' LIMIT 10
-        - "ki tentang batik" → SELECT * FROM ... WHERE judul LIKE '%batik%' OR abstrak LIKE '%batik%' LIMIT 10
-          - "abstrak dari paten Konverter Mikro" → SELECT judul, abstrak FROM ... WHERE judul LIKE '%Konverter Mikro%' LIMIT 5
-
-    E.PENCARIAN BERDASARKAN NOMOR:
-    - "detail ki nomor S00202409617" → SELECT * FROM ... WHERE no_permohonan = 'S00202409617' LIMIT 1
-      - "cari sertifikat IDP000084749" → SELECT * FROM ... WHERE id_sertifikat = 'IDP000084749' LIMIT 1
-        - "ki dengan id 122" → SELECT * FROM ... WHERE id_ki = 122 LIMIT 1
-
-    F.PENCARIAN DAFTAR / KATEGORI:
-    - "Ada berapa dosen?" → SELECT COUNT(DISTINCT inventor) FROM ... WHERE pekerjaan_inventor LIKE '%Dosen%'
-      - "Tampilkan dosennya" → SELECT DISTINCT inventor, fakultas_inventor, pekerjaan_inventor FROM ... WHERE pekerjaan_inventor LIKE '%Dosen%' LIMIT 50
-        - "Apa saja kategori ki?" → SELECT DISTINCT jenis_ki FROM ... LIMIT 50
-          - "Ada status apa saja?" → SELECT DISTINCT status_ki FROM ... LIMIT 50
-            - "Daftar paten terbaru" → SELECT * FROM ... WHERE jenis_ki LIKE '%Paten%' ORDER BY tgl_pendaftaran DESC LIMIT 10
-              - "Tampilkan data merek dan paten" → SELECT * FROM ... WHERE jenis_ki IN('Merek', 'Paten') LIMIT 10
-                - "Lihat ki selain paten" → SELECT * FROM ... WHERE jenis_ki NOT LIKE '%Paten%' LIMIT 10
-                  - "Ada berapa ki dari FTI?" → SELECT COUNT(*) AS total FROM ... WHERE fakultas_inventor LIKE '%FTI%'
-                    - "Daftar instansi yang ada" → SELECT DISTINCT nama_instansi_inventor FROM ... LIMIT 50
-                      - "Jumlah ki per instansi" → SELECT nama_instansi_inventor, COUNT(*) AS total FROM ... GROUP BY nama_instansi_inventor ORDER BY total DESC LIMIT 20
-
-    G.PENCARIAN TKT(Tingkat Kesiapan Teknologi):
-    - "ki dengan tkt 6" → SELECT * FROM ... WHERE tkt = 6 LIMIT 10
-      - "berapa ki yang tkt nya di atas 5" → SELECT COUNT(*) AS total FROM ... WHERE tkt > 5
-        - "rata-rata tkt" → SELECT AVG(tkt) AS rata_rata_tkt FROM ...
-
-    H.PENCARIAN TEMPORAL LANJUTAN:
-    - "ki yang sudah tersertifikasi tahun 2023" → SELECT * FROM ... WHERE YEAR(tgl_sertifikasi) = 2023 LIMIT 10
-      - "ki yang didaftarkan antara 2020 dan 2023" → SELECT * FROM ... WHERE YEAR(tgl_pendaftaran) BETWEEN 2020 AND 2023 LIMIT 10
-        - "paten terlama" → SELECT * FROM ... WHERE jenis_ki LIKE '%Paten%' ORDER BY tgl_pendaftaran ASC LIMIT 10
-
-    I.PERBANDINGAN DAN NEGASI:
-    - "ki yang bukan paten" → SELECT * FROM ... WHERE jenis_ki NOT LIKE '%Paten%' LIMIT 10
-      - "inventor selain FTI" → SELECT DISTINCT inventor, fakultas_inventor FROM ... WHERE fakultas_inventor NOT LIKE '%FTI%' LIMIT 50
-        - "mana yang lebih banyak paten atau hak cipta" → SELECT jenis_ki, COUNT(*) AS total FROM ... WHERE jenis_ki IN('Paten', 'Hak Cipta') GROUP BY jenis_ki ORDER BY total DESC
-
-    6. SORTING: Jika diminta yang "terbaru", urutkan ORDER BY kolom tanggal DESC. "terlama" → ASC.
-7. FILTERING: Sesuaikan dengan kata kunci user(FMIPA, Tahun, Jenis KI, Luar ITB, nama inventor, pekerjaan, status, mitra, dll).
-
-8. RANKING / SUPERLATIVE — yang mana "terbanyak", "paling banyak", "paling sering":
-    - PENTING: Kolom "inventor" mengandung BANYAK NAMA dalam SATU cell, dipisahkan oleh "<br/>".
-   - Untuk menghitung jumlah inventor per KI, gunakan:
-    (LENGTH(inventor) - LENGTH(REPLACE(inventor, '<br/>', ''))) / LENGTH('<br/>') + 1 AS jumlah_inventor
-      - Contoh: "KI dengan inventor terbanyak" →
-     SELECT judul, jenis_ki, inventor, (LENGTH(inventor) - LENGTH(REPLACE(inventor, '<br/>', ''))) / LENGTH('<br/>') + 1 AS jumlah_inventor FROM ... ORDER BY jumlah_inventor DESC LIMIT 10
-      - Contoh: "Fakultas paling aktif" → SELECT fakultas_inventor, COUNT(*) AS total FROM ... GROUP BY fakultas_inventor ORDER BY total DESC LIMIT 10
-        - Contoh: "Jenis KI paling banyak" → SELECT jenis_ki, COUNT(*) AS total FROM ... GROUP BY jenis_ki ORDER BY total DESC
-          - Contoh: "Tahun dengan pendaftaran terbanyak" → SELECT YEAR(tgl_pendaftaran) AS tahun, COUNT(*) AS total FROM ... GROUP BY tahun ORDER BY total DESC LIMIT 10
-            - Contoh: "Instansi paling aktif" → SELECT nama_instansi_inventor, COUNT(*) AS total FROM ... GROUP BY nama_instansi_inventor ORDER BY total DESC LIMIT 10
-
-    9. MULTI - VALUE COLUMNS:
-    - Kolom "inventor", "fakultas_inventor", "pekerjaan_inventor", "nama_instansi_inventor" bisa berisi BANYAK nilai dalam satu baris, dipisah oleh "<br/>" atau koma.
-   - Jika user bertanya tentang seorang inventor spesifik, gunakan LIKE: WHERE inventor LIKE '%Nama%'
-      - Jika user menyebut nama yang TIDAK PERSIS(misal typo / singkatan), tetap gunakan LIKE dengan bagian nama yang paling jelas.
-        Contoh: "anugerh sabdno" → LIKE '%nug%Sabd%'(cukup pakai potongan nama yang mirip)
-
-    10. PENCARIAN PINTAR NAMA:
-    - Jika user menyebut nama orang(seperti "Eko", "Sabdono", "Prof Budi"), SELALU cari di kolom inventor dengan LIKE.
-   - Jika nama hanya 1 kata(misal "Eko"), gunakan: WHERE inventor LIKE '%Eko%'
-      - Jika nama 2 + kata(misal "Eko Mursito"), gunakan: WHERE inventor LIKE '%Eko%' AND inventor LIKE '%Mursito%'
-    ATAU: WHERE inventor LIKE '%Eko Mursito%'
-      - JANGAN gunakan = untuk nama — SELALU gunakan LIKE karena kolom inventor mengandung banyak nama + gelar.
-`;
-    } else {
-      domainInstructions = `
-CATATAN PENTING DATABASE SPESIFIK:
-    - Database ini adalah database kustom dari API atau sistem lain.
-- TABEL DAN KOLOM HANYA BOLEH MENGGUNAKAN YANG MUNCUL DI SCHEMA DI ATAS.
-- JANGAN PERNAH berhalusinasi atau memaksakan struktur "Kekayaan Intelektual"(seperti jenis_ki, inventor, status_ki, id_sertifikat) pada database ini kecuali field tersebut secara tegas tertera di SCHEMA.
-- Jika ada field bertipe TEXT / VARCHAR yang dicari, gunakan "LIKE '%keyword%'".
-- Jika user mencari tahun, lihat apakah ada kolom tipe DATE atau DATETIME(seperti "created_at" atau "tanggal"), lalu filter menggunakan "YEAR(kolom_tanggal) = Tahun_Dicari".
-
-ATURAN GENERIK QUERY:
-    1. PENCARIAN & FILTERING:
-    - Cocokkan nama kolom di text prompt persis dengan nama kolom di schema.Contoh: "kategori laptop" -> WHERE category LIKE '%laptop%'
-    2. JUMLAH & AGREGASI:
-    - "Berapa banyak X": SELECT COUNT(*) AS total FROM ...
-    3. PENGELOMPOKKAN & DAFTAR:
-    - "Ada apa saja isi kolom X": SELECT DISTINCT X FROM ...
-    - Urutkan jika diminta "terbaru" atau "terlama" berdasarkan satu - satunya kolom tanggal yang tersedia.
-`;
-    }
-    const prompt = `Kamu adalah SQL Expert untuk MySQL. Generate SATU query SQL yang akurat. Prioritaskan menyesuaikan kolom dengan KATA KUNCI dari pertanyaan user dan SCHEMA di bawah.
-
-SCHEMA:
-${schemaSummary}
-
-KONTEKS PERCAKAPAN:
-${contextStr}
-${fewShotSection}${errorWarnings}${sqlHints}${filterContext}
-PERTANYAAN USER: "${q}"
-OFFSET SAAT INI: ${offset}
-LIMIT: ${limit}
-
-${domainInstructions}
-
-ATURAN WAJIB SQL (PHASE 4 - THE GRAND ANALYST EDITION):
-- Gunakan LIMIT ${limit} OFFSET ${offset} kecuali untuk query agregasi/count tunggal. Jika query me-request daftar identitas (DISTINCT), gunakan MAX LIMIT 50.
-- PENTING (FILTER KOLOM): Jika user meminta kolom spesifik (misal: "tampilkan nama saja"), hanya SELECT kolom tersebut. JANGAN SELECT * jika tidak perlu.
-- PENTING (JOIN): Jika user bertanya tentang data yang tersebar di dua tabel dalam satu database ini, kamu WAJIB menggunakan JOIN yang valid.
-- PENTING (MULTI-DB): Fokus pada tabel di database ini. Jika tabel tidak ada, jangan mengarang. Biarkan SQL kosong agar sistem mencari di database lain.
-- SELALU gunakan LIKE untuk pencarian teks/nama. JANGAN gunakan '=' untuk kolom string.`;
-
-    const sql = await this.askAI(prompt, 0, 0, 0.1);
-    const cleaned = this.cleanSQLQuery(sql);
-    if (cleaned) {
-      debugLog('SQL_GENERATED_CLEANED', cleaned.substring(0, 200));
-    }
-    return cleaned;
-  }
-
-  // ================================================================
-  // FORMAT RESPONSE — dinamis berdasarkan tipe data
-  // ================================================================
-  async formatResponse(q, data, database, offset = 0, total = null, targetColumns = null) {
-    const qLower = q.toLowerCase();
-    const totalData = total || data.length;
-
-    // --- DYNAMIC COLUMN SLICER (Phase 4) ---
-    // Jika user minta kolom spesifik, filter data sebelum diformat
-    if (targetColumns && Array.isArray(targetColumns) && targetColumns.length > 0 && data.length > 0) {
-      const availableColumns = Object.keys(data[0]);
-      const validColumns = targetColumns.filter(c => availableColumns.some(ac => ac.toLowerCase() === c.toLowerCase()));
-
-      if (validColumns.length > 0) {
-        data = data.map(row => {
-          const newRow = {};
-          validColumns.forEach(c => {
-            const actualKey = availableColumns.find(ac => ac.toLowerCase() === c.toLowerCase());
-            newRow[actualKey] = row[actualKey];
-          });
-          return newRow;
-        });
-        debugLog('DYNAMIC_COLUMN_SLICING_APPLIED', { requested: targetColumns, valid: validColumns });
-      }
-    }
-
-    // --- COUNT result ---
-    if (this.isCountResult(data)) {
-      const keys = Object.keys(data[0]);
-      const countKey = keys.find(k => {
-        const kl = k.toLowerCase();
-        return kl === 'total' || kl === 'jumlah' || kl === 'count' || kl.includes('count(');
-      }) || keys[0];
-      const num = data[0][countKey] || 0;
-
-      // Buat kalimat yang lebih natural berdasarkan query
-      const qL = q.toLowerCase();
-      let label = 'Total data';
-      let obj = 'Kekayaan Intelektual';
-
-      if (qL.includes('inventor') || qL.includes('penemu')) {
-        label = 'Ditemukan';
-        obj = 'nama inventor';
-      } else if (qL.includes('fakultas')) {
-        label = 'Terdapat';
-        obj = 'fakultas';
-      } else if (qL.includes('jenis') || qL.includes('kategori')) {
-        label = 'Terdapat';
-        obj = 'jenis';
-      } else if (qL.includes('tipe') || qL.includes('macam')) {
-        label = 'Terdapat';
-        obj = 'tipe data';
-      }
-
-      let filter = '';
-      if (qL.includes('paten')) filter = ' Paten';
-      else if (qL.includes('hak cipta')) filter = ' Hak Cipta';
-      else if (qL.includes('merek')) filter = ' Merek';
-      else if (qL.includes('desain industri')) filter = ' Desain Industri';
-
-      let context = '';
-      const tahunMatch = q.match(/\b(20\d{2}|19\d{2})\b/);
-      if (tahunMatch) context += ` tahun ${tahunMatch[1]} `;
-      const fkMatch = q.match(/\b(FMIPA|FTMD|FTI|STEI|SITH|FITB|FSRD|SBM|FTTM|SF|SAPPK)\b/i);
-      if (fkMatch) context += ` dari ${fkMatch[1].toUpperCase()} `;
-
-      const finalSentence = `${label} **${formatNumber(num)}** ${obj}${filter}${context}.`;
-
-      return `${finalSentence} \n\nApakah Anda ingin melihat daftar ${obj} tersebut? Silakan jawab ** ya ** atau ** tidak **.`;
-    }
-
-    // --- GROUP BY / breakdown ---
-    if (this.isGroupByResult(data)) {
-      const result = this.formatGroupBy(q, data, totalData);
-      return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-    }
-
-    // --- Single record detail ---
-    // PRIORITAS TINGGI: Jika hanya 1 data, tampilkan secara detail/percakapan, JANGAN sebagai list
-    if (data.length === 1) {
-      const result = this.formatSingleRecord(data[0]);
-      return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-    }
-
-    // --- Name list & Simple distinct list (HANYA jika 1-3 kolom tanpa atribut berat) ---
-    if (this.isSimpleList(data)) {
-      const result = this.formatSimpleList(q, data, offset, totalData);
-      return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-    }
-
-    // --- Multiple records ---
-    const result = this.formatMultipleRecords(q, data, offset, totalData);
-
-    // CRITICAL FIX: Ensure always return string
-    if (typeof result === 'object') {
-      return JSON.stringify(result, null, 2);
-    }
-
-    return result || 'Data berhasil dimuat.';
-  }
-
-  isCountResult(data) {
-    if (data.length !== 1) return false;
-    const keys = Object.keys(data[0]);
-    if (keys.length > 2) return false;
-
-    // Cek apakah kolom bernama count/total/jumlah/avg/sum/rata
-    const hasCountKey = keys.some(k => {
-      const kl = k.toLowerCase();
-      return kl.includes('total') || kl.includes('jumlah') || kl.includes('count')
-        || kl.includes('avg') || kl.includes('sum') || kl.includes('rata');
-    });
-    if (hasCountKey) return true;
-
-    // FIX: Jika hanya 1 kolom dengan 1 nilai numerik, ini PASTI result COUNT/agregasi
-    // Contoh: SQL mengembalikan {tkt: 4} dari COUNT(DISTINCT jenis_ki) yang salah alias
-    if (keys.length === 1) {
-      const val = data[0][keys[0]];
-      if (typeof val === 'number') return true;
-    }
-
-    return false;
-  }
-
-  isGroupByResult(data) {
-    if (!data.length) return false;
-    const keys = Object.keys(data[0]);
-    // Ada persis 2 kolom: satu string/apapun, satu numeric (count/total)
-    const valCol = keys.find(k => ['total', 'jumlah', 'count'].includes(k));
-    const isSummed = !!valCol;
-    return (keys.length === 2 && isSummed);
-  }
-
-  // ================================================================
-  // GENERATE EXPORT FILE (XLSX) - SUPPORT EXPO GO & ABSOLUTE URL
-  // ================================================================
-  async generateExportResponse(data, originalQuestion, userId, host = null) {
-    try {
-      if (!data || data.length === 0) return null;
-
-      const fs = require('fs');
-      const path = require('path');
-      const XLSX = require('xlsx');
-
-      const uploadDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-      // Membersihkan data (hapus tag HTML seperti <br/>)
-      const cleanData = data.map(row => {
-        const newRow = {};
-        for (const [k, v] of Object.entries(row)) {
-          let val = v;
-          if (val && typeof val === 'string') val = val.replace(/<br\s*\/?>/gi, ', ');
-          newRow[k] = val;
-        }
-        return newRow;
-      });
-
-      // Bikin worksheet & workbook XLSX
-      const ws = XLSX.utils.json_to_sheet(cleanData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Data KI");
-
-      const filename = `Data_KI_${Date.now()}.xlsx`;
-      const filepath = path.join(uploadDir, filename);
-      XLSX.writeFile(wb, filepath);
-
-      // Gunakan Absolute URL jika host tersedia agar tidak dibajak Frontend Router atau Tunnel Interceptor
-      let baseUrl = '';
-      if (host) {
-        const isLocalIP = host.includes('localhost') || host.includes('127.0.0.1') ||
-          host.startsWith('192.168.') || host.startsWith('10.');
-        baseUrl = isLocalIP ? `http://${host}` : `https://${host}`;
-      }
-      const downloadPath = `${baseUrl}/api/download/${filename}`;
-
-      const msg = `Data berhasil disiapkan! 📥\n\nSilakan unduh file Excel Anda melalui tautan resmi di bawah ini:\n\n🔗 **[DOWNLOAD DATA EXCEL](${downloadPath})**`;
-
-      this.addToContext(userId, "user", "Tolong export data");
-      this.addToContext(userId, "assistant", msg);
-
-      return { type: "answer", message: msg };
-    } catch (e) {
-      console.error('Export Error:', e);
-      return { type: "answer", message: "Maaf, terjadi kesalahan saat mencoba membuat file export Excel." };
-    }
-  }
-
-  // ================================================================
-  // GENERATE CHART (QUICKCHART API) - WITH PNG EXPORT SUPPORT
-  // ================================================================
-  async generateChartResponse(data, originalQuestion, userId, host = null) {
-    try {
-      if (!data || data.length === 0) {
-        return { type: "answer", message: "Maaf, tidak ada data sebelumnya yang bisa dijadikan grafik." };
-      }
-
-      const valCol = Object.keys(data[0]).find(k => ['total', 'jumlah', 'count', 'rata', 'sum'].includes(k.toLowerCase()));
-      const keyCol = Object.keys(data[0]).find(k => k !== valCol);
-
-      if (!keyCol || !valCol) {
-        return { type: "answer", message: "Maaf, data saat ini tidak cocok untuk dibuatkan grafik otomatis (harus berupa rekap jumlah)." };
-      }
-
-      const chartData = data.slice(0, 15); // limit max 15 baris agar grafik tidak sumpek
-      const labels = chartData.map(r => String(r[keyCol] || 'Tidak Diketahui').substring(0, 20));
-      const values = chartData.map(r => Number(r[valCol]) || 0);
-
-      let chartType = 'bar';
-      if (/tahun|tgl|tanggal|year|date/i.test(keyCol)) {
-        chartType = 'line'; // Grafik garis untuk timeline/waktu
-      } else if (labels.length <= 5) {
-        chartType = 'pie';  // Grafik lingkaran untuk komponen kecil
-      }
-
-      const isLineChart = chartType === 'line';
-      const isPieChart = chartType === 'pie';
-      const isBarChart = chartType === 'bar';
-
-      // Warna Premium Indigo/Biru
-      const primaryAlpha = 'rgba(79, 70, 229, 0.4)'; // Indigo-600 dengan transparansi
-      const primarySolid = 'rgba(79, 70, 229, 1)';
-      const pieColors = [
-        'rgba(79, 70, 229, 0.8)',
-        'rgba(14, 165, 233, 0.8)',
-        'rgba(16, 185, 129, 0.8)',
-        'rgba(245, 158, 11, 0.8)',
-        'rgba(236, 72, 153, 0.8)',
-        'rgba(139, 92, 246, 0.8)',
-        'rgba(100, 116, 139, 0.8)'
-      ];
-
-      const chartConfig = {
-        type: chartType,
-        data: {
-          labels: labels,
-          datasets: [{
-            label: valCol.toUpperCase(),
-            data: values,
-            backgroundColor: isPieChart ? pieColors : primaryAlpha,
-            borderColor: isPieChart ? '#ffffff' : primarySolid,
-            borderWidth: isPieChart ? 2 : (isLineChart ? 3 : 2),
-            fill: isLineChart ? true : false,
-            tension: isLineChart ? 0.4 : 0, // Curve halus untuk line chart
-            borderRadius: isBarChart ? 6 : 0, // Membulatkan edge pada bar
-            pointBackgroundColor: '#ffffff',
-            pointBorderColor: primarySolid,
-            pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          plugins: {
-            title: {
-              display: true,
-              text: [
-                `Data: ${originalQuestion.substring(0, 50)}${originalQuestion.length > 50 ? '...' : ''}`,
-                `Total Keseluruhan: ${values.reduce((a, b) => a + b, 0).toLocaleString('id-ID')} Data`
-              ],
-              font: {
-                family: "'Inter', 'Helvetica Neue', 'Arial', sans-serif",
-                size: 20,
-                weight: 'bold'
-              },
-              color: '#1f2937',
-              padding: 20
-            },
-            legend: {
-              display: isPieChart,
-              position: 'bottom',
-              labels: { font: { family: "'Inter', 'Helvetica Neue', 'Arial', sans-serif", size: 14 } }
-            },
-            datalabels: {
-              display: true,
-              color: isPieChart ? '#ffffff' : primarySolid,
-              backgroundColor: isPieChart ? 'transparent' : 'rgba(255, 255, 255, 0.85)',
-              borderRadius: 4,
-              font: {
-                family: "'Inter', 'Helvetica Neue', 'Arial', sans-serif",
-                weight: 'bold',
-                size: 13
-              },
-              anchor: isPieChart ? 'center' : 'end',
-              align: isPieChart ? 'center' : 'top',
-              offset: 6,
-              padding: 4
-            }
-          },
-          layout: { padding: { top: 40, right: 20, bottom: 20, left: 20 } },
-          scales: isPieChart ? {} : {
-            x: {
-              grid: { display: false },
-              ticks: {
-                font: { family: "'Inter', 'Helvetica Neue', 'Arial', sans-serif", size: 13 },
-                color: '#6b7280'
-              }
-            },
-            y: {
-              grid: { color: '#f3f4f6', borderDash: [5, 5] },
-              ticks: {
-                font: { family: "'Inter', 'Helvetica Neue', 'Arial', sans-serif", size: 13 },
-                color: '#6b7280',
-                beginAtZero: true
-              },
-              border: { display: false }
-            }
-          }
-        }
-      };
-
-      const chartUrlObj = `https://quickchart.io/chart?v=3&c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=800&h=500&bkg=white`;
-
-      // PROSES EKSPOR GAMBAR (.PNG)
-      const fs = require('fs');
-      const path = require('path');
-      const axios = require('axios');
-
-      const uploadDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-      const filename = `Grafik_KI_${Date.now()}.png`;
-      const filepath = path.join(uploadDir, filename);
-
-      // Download gambar secara internal
-      const response = await axios({
-        method: 'GET',
-        url: chartUrlObj,
-        responseType: 'arraybuffer'
-      });
-      fs.writeFileSync(filepath, response.data);
-
-      // Siapkan Absolute URL
-      let baseUrl = '';
-      if (host) {
-        const isLocalIP = host.includes('localhost') || host.includes('127.0.0.1') ||
-          host.startsWith('192.168.') || host.startsWith('10.');
-        baseUrl = isLocalIP ? `http://${host}` : `https://${host}`;
-      }
-      const downloadPath = `${baseUrl}/api/download/${filename}`;
-
-      const msg = `Tentu, berikut adalah visualisasi grafiknya: \n\n![Grafik Peningkatan](${downloadPath})\n\n🔗 **[DOWNLOAD GRAFIK PNG](${downloadPath})**\n\nSemoga grafik ini membantu Anda menganalisa tren data dengan lebih mudah!`;
-
-      this.addToContext(userId, "user", "buatkan grafik");
-      this.addToContext(userId, "assistant", msg);
-
-      return { type: "answer", message: msg };
-    } catch (e) {
-      console.error('Error Generating Chart:', e);
-      return { type: "answer", message: "Maaf, terjadi kesalahan saat mencoba membuat grafik." };
-    }
-  }
-
-  // ================================================================
-  // GENERATE PDF REPORT (PDFKIT) - PHASE 3 FEATURE
-  // ================================================================
-  async generatePDFResponse(data, originalQuestion, userId, host = null) {
-    try {
-      if (!data || data.length === 0) return null;
-
-      const fs = require('fs');
-      const path = require('path');
-      const PDFDocument = require('pdfkit-table');
-      const axios = require('axios');
-
-      const uploadDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-      const filename = `Laporan_KI_${Date.now()}.pdf`;
-      const filepath = path.join(uploadDir, filename);
-
-      // --- LOGIC: Select most relevant columns to avoid messy layout ---
-      const allColumns = Object.keys(data[0]);
-      let targetCols = allColumns;
-
-      // Jika kolom terlalu banyak (> 7), pilih yang paling penting saja
-      if (allColumns.length > 7) {
-        const priority = ['judul', 'title', 'inventor', 'penemu', 'jenis_ki', 'kategori', 'status', 'tgl_pendaftaran', 'tanggal', 'tahun', 'fakultas'];
-        targetCols = allColumns.filter(c => priority.some(p => c.toLowerCase().includes(p))).slice(0, 7);
-        // Jika masih nol (tidak ada kolom prioritas), ambil 6 kolom pertama
-        if (targetCols.length === 0) targetCols = allColumns.slice(0, 6);
-        debugLog('PDF_COLUMN_FILTERING', { before: allColumns.length, after: targetCols.length });
-      }
-
-      const doc = new PDFDocument({
-        margin: 40,
-        size: 'A4',
-        layout: targetCols.length > 5 ? 'landscape' : 'portrait', // Otomatis miring jika kolom banyak
-        info: {
-          Title: 'Laporan Kekayaan Intelektual ITB',
-          Author: 'ITB Chatbot AI',
-        }
-      });
-
-      doc.pipe(fs.createWriteStream(filepath));
-
-      // 1. HEADER - Blue Accent
-      const headerWidth = doc.page.width;
-      doc.rect(0, 0, headerWidth, 80).fill('#1e3a8a');
-      doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text('LAPORAN DATA KEKAYAAN INTELEKTUAL', 40, 30);
-      doc.fontSize(10).font('Helvetica').text('INSTITUT TEKNOLOGI BANDUNG', 40, 55);
-
-      doc.moveDown(4);
-      doc.fillColor('#333333').fontSize(12).font('Helvetica-Bold').text(`Topik: "${originalQuestion}"`, { underline: true });
-      doc.fontSize(9).font('Helvetica').text(`Tanggal Unduh: ${new Date().toLocaleString('id-ID')}`, { align: 'right' });
-      doc.moveDown(1);
-
-      // 2. AI SUMMARY (PARAGRAPH FORMAT)
-      const summaryPrompt = `Buatkan ringkasan eksekutif yang profesional untuk laporan data ini.
-      Data: ${JSON.stringify(data.slice(0, 5))}
-      Total Data: ${data.length}
-      Topik: "${originalQuestion}"
-      
-      INSTRUKSI:
-      1. Tulis dalam 2-3 paragraf singkat dan padat.
-      2. Gunakan Bahasa Indonesia formal.
-      3. Fokus pada analisis tren dan statistik utama.
-      4. JANGAN gunakan bullet points, gunakan format PARAGRAF murni.
-      5. JANGAN menuliskan "Berikut ringkasannya:".`;
-
-      const aiSummary = await this.askAI(summaryPrompt, 0, 0, 0.4);
-      if (aiSummary) {
-        doc.fillColor('#1e3a8a').fontSize(12).font('Helvetica-Bold').text('RINGKASAN EKSEKUTIF', { underline: false });
-        doc.rect(doc.x, doc.y, 100, 2).fill('#1e3a8a'); // Underline manual
-        doc.moveDown(1);
-        doc.fillColor('#2d3748').font('Helvetica').fontSize(10).text(this.stripPromptLeak(aiSummary), { align: 'justify', lineGap: 3, paragraphGap: 8 });
-        doc.moveDown(1.5);
-      }
-
-      // 3. CHART INJECTION
-      const valCol = Object.keys(data[0]).find(k => ['total', 'jumlah', 'count', 'rata', 'sum'].includes(k.toLowerCase()));
-      const keyCol = Object.keys(data[0]).find(k => k !== valCol);
-
-      if (keyCol && valCol && data.length > 1) {
-        try {
-          const chartData = data.slice(0, 10);
-          const labels = chartData.map(r => String(r[keyCol] || '-').substring(0, 15));
-          const values = chartData.map(r => Number(r[valCol]) || 0);
-
-          const chartConfig = {
-            type: labels.length <= 5 ? 'pie' : 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: valCol.toUpperCase(),
-                data: values,
-                backgroundColor: ['#1e3a8a', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#6366f1']
-              }]
-            },
-            options: {
-              plugins: {
-                title: { display: true, text: `Visualisasi ${originalQuestion.substring(0, 30)}` },
-                legend: { position: labels.length <= 5 ? 'right' : 'bottom' }
-              }
-            }
-          };
-
-          const chartUrl = `https://quickchart.io/chart?v=3&c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=600&h=300&bkg=white`;
-          const chartRes = await axios({ method: 'GET', url: chartUrl, responseType: 'arraybuffer' });
-
-          doc.image(chartRes.data, { fit: [doc.page.width - 100, 220], align: 'center' });
-          doc.moveDown(12);
-        } catch (chartErr) {
-          console.error('PDF Chart Error:', chartErr);
-        }
-      }
-
-      // 4. DATA TABLE (CLEANED)
-      doc.addPage({ layout: 'landscape', margin: 40 }); // Tabel di halaman baru agar lega
-      doc.fillColor('#1e3a8a').fontSize(14).font('Helvetica-Bold').text('RINCIAN DATA LENGKAP', { underline: false });
-      doc.moveDown(1);
-
-      const tableData = data.slice(0, 50).map(row => { // Limit 50 data untuk PDF agar tidak terlalu tebal
-        return targetCols.map(col => {
-          let val = row[col];
-          if (val === null || val === undefined) return '-';
-          if (typeof val === 'string') {
-            val = val.replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '').trim();
-            // Batasi panjang teks dalam sel
-            return val.length > 120 ? val.substring(0, 117) + '...' : val;
-          }
-          return String(val);
-        });
-      });
-
-      const headers = targetCols.map(k => k.replace(/_/g, ' ').toUpperCase());
-
-      const table = {
-        headers: headers,
-        rows: tableData
-      };
-
-      await doc.table(table, {
-        prepareHeader: () => doc.font('Helvetica-Bold').fontSize(8).fillColor('#ffffff'),
-        prepareRow: (row, indexColumn, indexRow, rectRow, rectCell) => {
-          doc.font('Helvetica').fontSize(7).fillColor('#333333');
-          if (indexRow % 2 !== 0) {
-            doc.rect(rectRow.x, rectRow.y, rectRow.width, rectRow.height).fill('#f8fafc');
-            doc.fillColor('#333333');
-          }
-        },
-        padding: 5,
-        columnSpacing: 5,
-        divider: {
-          header: { disabled: false, width: 1, opacity: 1, color: '#1e3a8a' },
-          horizontal: { disabled: false, width: 0.5, opacity: 0.1 }
-        }
-      });
-
-      // 5. FOOTER
-      doc.page.margins.bottom = 50;
-      doc.fontSize(8).fillColor('#999999').text(`Dokumen ini dihasilkan secara otomatis oleh ITB Chatbot AI pada ${new Date().toLocaleString('id-ID')}. Hal: ${doc.page.width}/${doc.page.height}`, 50, doc.page.height - 40, { align: 'center' });
-
-      doc.end();
-
-      // BASE URL Logic
-      let baseUrl = '';
-      if (host) {
-        const isLocalIP = host.includes('localhost') || host.includes('127.0.0.1') ||
-          host.startsWith('192.168.') || host.startsWith('10.');
-        baseUrl = isLocalIP ? `http://${host}` : `https://${host}`;
-      }
-      const downloadPath = `${baseUrl}/api/download/${filename}`;
-
-      const msg = `Laporan PDF berhasil disusun! 📄✨\n\nDokumen ini berisi rangkuman data dan grafik visual dari pencarian Anda.\n\n🔗 **[UNDUH LAPORAN PDF](${downloadPath})**`;
-
-      this.addToContext(userId, "user", "buatkan pdf");
-      this.addToContext(userId, "assistant", msg);
-
-      return { type: "answer", message: msg };
-    } catch (e) {
-      console.error('PDF Generation Error:', e);
-      return { type: "answer", message: "Maaf, terjadi kesalahan saat menyusun laporan PDF." };
-    }
-  }
-
-  // ================================================================
-  // GENERATE VISUAL DASHBOARD (PHASE 5)
-  // ================================================================
-  async generateDashboardResponse(data, originalQuestion, userId, host = null) {
-    try {
-      if (!data || data.length === 0) {
-        return { type: "answer", message: "Maaf, tidak ada data untuk ditampilkan di dashboard." };
-      }
-
-      const dashboardService = require('./services/dashboard-service');
-      const dashboardId = dashboardService.saveDashboard(data, `Dashboard: ${originalQuestion}`);
-
-      // Base URL Logic
-      let baseUrl = '';
-      if (host) {
-        const isLocalIP = host.includes('localhost') || host.includes('127.0.0.1') ||
-          host.startsWith('192.168.') || host.startsWith('10.');
-        baseUrl = isLocalIP ? `http://${host}` : `https://${host}`;
-      }
-      const dashboardLink = `${baseUrl}/dashboard/index.html?id=${dashboardId}`;
-
-      const msg = `Dashboard Visual Interaktif berhasil dibuat! 📊✨\n\nMas bisa melihat analisis data secara luas dan interaktif melalui link di bawah ini.\n\n🔗 **[BUKA DASHBOARD VISUAL INTERAKTIF](${dashboardLink})**\n\n*Catatan: Dashboard ini bersifat sementara dan akan kadaluarsa dalam 24 jam.*`;
-
-      this.addToContext(userId, "user", "buatkan dashboard");
-      this.addToContext(userId, "assistant", msg);
-
-      return { type: "answer", message: msg };
-    } catch (e) {
-      console.error('Dashboard Generation Error:', e);
-      return { type: "answer", message: "Maaf, terjadi kesalahan saat menyiapkan dashboard visual." };
-    }
-  }
-  isSimpleList(data) {
-    if (!data.length) return false;
-    const keys = Object.keys(data[0]);
-    // Simple list jika kurang dari sama dengan 3 kolom dan tanpa primary keys berat
-    return keys.length <= 3 && !keys.includes('judul') && !keys.includes('id_sertifikat') && !keys.includes('no_permohonan');
-  }
-
-  formatGroupBy(q, data, total) {
-    if (!data || !data.length) return 'Tidak ada data.';
-    const keyCol = Object.keys(data[0]).find(k => !['total', 'jumlah', 'count'].includes(k));
-    const valCol = Object.keys(data[0]).find(k => ['total', 'jumlah', 'count'].includes(k));
-    if (!keyCol || !valCol) return JSON.stringify(data, null, 2);
-    const lines = data.map((r, i) => `${i + 1}. ${formatSnakeCaseValue(r[keyCol]) || '-'}: ${formatNumber(r[valCol])} `).join('\n');
-    const grandTotal = data.reduce((s, r) => s + Number(r[valCol] || 0), 0);
-    const cleanKeyCol = keyCol.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-    let resMsg = `Breakdown berdasarkan ** ${cleanKeyCol}**: \n\n${lines} \n\nTotal keseluruhan: ** ${formatNumber(grandTotal)}** `;
-
-    return resMsg;
-  }
-
-  formatSimpleList(q, data, offset, total) {
-    if (!data || !data.length) return 'Tidak ada data.';
-
-    const nameCol = Object.keys(data[0]).find(k => k === 'nama' || k === 'inventor' || k === 'jenis_ki') || Object.keys(data[0])[0];
-    const extraCols = Object.keys(data[0]).filter(k => k !== nameCol);
-    const isInventorCol = nameCol === 'inventor' || nameCol === 'nama';
-
-    const allNames = [];
-    const isInstansiCol = nameCol === 'nama_instansi_inventor';
-
-    for (const row of data) {
-      const rawName = row[nameCol];
-      if (!rawName || (typeof rawName !== 'string' && typeof rawName !== 'number')) continue;
-
-      const strVal = String(rawName).trim();
-
-      // === Kolom instansi — split dan ambil nilai unik per row ===
-      if (isInstansiCol) {
-        const parts = strVal
-          .replace(/<br\s*\/?>/gi, ',')
-          .replace(/<[^>]+>/g, '')
-          .split(/,/)
-          .map(s => s.trim())
-          .filter(s => s && s.length > 2 && s !== '-');
-        for (const part of parts) {
-          allNames.push(part);
-        }
-        // === Kolom inventor — split dari HTML/CSV ===
-      } else if (isInventorCol) {
-        const parts = strVal
-          .replace(/<br\s*\/?>/gi, '|||')
-          .replace(/<[^>]+>/g, '')
-          .split(/\|\|\||,(?!\s*(S\.|M\.|Ph|Dr|Prof|Ir))/i)
-          .map(s => s?.trim() || '')
-          .filter(s => s && s.length > 3);
-
-        for (const part of parts) {
-          const clean = part.replace(/\s*\([^)]*-[^)]*\)\s*$/g, '').trim();
-          if (clean && clean.length > 3) {
-            if (extraCols.length > 0) {
-              // Deduplikasi extras (hindari "Dosen, Dosen, Dosen")
-              const rawExtras = extraCols.map(c => row[c]).filter(Boolean);
-              const uniqueExtras = [...new Set(rawExtras.flatMap(e => String(e).split(/,\s*/).map(s => s.trim())).filter(Boolean))];
-              const extras = uniqueExtras.join(', ');
-              allNames.push(extras ? `${clean} (${extras})` : clean);
-            } else {
-              allNames.push(clean);
-            }
-          }
-        }
-      } else {
-        // Simple list biasa untuk kolom umum (seperti jenis_ki, status_ki)
-        const clean = formatSnakeCaseValue(strVal);
-        if (extraCols.length > 0) {
-          const rawExtras = extraCols.map(c => typeof row[c] === 'string' ? formatSnakeCaseValue(String(row[c])) : row[c]).filter(Boolean);
-          const uniqueExtras = [...new Set(rawExtras.flatMap(e => String(e).split(/,\s*/).map(s => s.trim())).filter(Boolean))];
-          const extras = uniqueExtras.join(', ');
-          allNames.push(extras ? `${clean} (${extras})` : clean);
-        } else {
-          allNames.push(clean);
-        }
-      }
-    }
-
-    if (!allNames.length) return 'Tidak ada data valid yang bisa ditampilkan.';
-
-    const unique = [...new Set(allNames)].sort();
-    const display = unique.slice(0, 50);
-
-    // Mapping kolom abbreviasi ke nama lengkap yang readable
-    const COLUMN_NAME_MAP = {
-      'tkt': 'TKT (Tingkat Kesiapan Teknologi)',
-      'jenis_ki': 'Jenis KI',
-      'status_ki': 'Status KI',
-      'status_dokumen': 'Status Dokumen',
-      'fakultas_inventor': 'Fakultas Inventor',
-      'pekerjaan_inventor': 'Pekerjaan Inventor',
-      'nama_instansi_inventor': 'Instansi Inventor',
-      'mitra_kepemilikan': 'Mitra Kepemilikan',
-      'tgl_pendaftaran': 'Tanggal Pendaftaran',
-      'tgl_sertifikasi': 'Tanggal Sertifikasi',
-      'no_permohonan': 'No. Permohonan',
-      'id_sertifikat': 'No. Sertifikat',
-    };
-    const cleanHeaderName = COLUMN_NAME_MAP[nameCol] || nameCol.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-    let out = `Berikut daftar ** ${cleanHeaderName}** (${formatNumber(total)} data ditemukan): \n\n`;
-    // Tambah baris kosong antar item agar mudah dibaca
-    out += display.map((n, i) => `${offset + i + 1}. ${n} `).join('\n\n');
-
-    if (total > offset + display.length) {
-      const sisa = total - offset - display.length;
-      out += `\n\nMasih ada ** ${formatNumber(sisa)}** data lagi.Apakah Anda ingin melihat data berikutnya ? Silakan ketik "lanjut" ya.`;
-    }
-
-
-    return out;
-  }
-
-  formatSingleRecord(record) {
-    if (!record || typeof record !== 'object') return JSON.stringify(record);
-
-    const fieldMap = {
-      judul: 'Judul',
-      jenis_ki: 'Jenis KI',
-      status_ki: 'Status KI',
-      status_dokumen: 'Status Dokumen',
-      tgl_pendaftaran: 'Tanggal Pendaftaran',
-      tgl_sertifikasi: 'Tanggal Sertifikasi',
-      no_permohonan: 'No. Permohonan',
-      id_sertifikat: 'No. Sertifikat',
-      inventor: 'Inventor',
-      fakultas_inventor: 'Fakultas',
-      pekerjaan_inventor: 'Pekerjaan',
-      nama_instansi_inventor: 'Instansi',
-      mitra_kepemilikan: 'Mitra',
-      abstrak: 'Abstrak'
-    };
-
-    let out = '';
-    if (record.judul) {
-      out += `** ${record.judul}**\n\n`;
-    }
-
-    const priorityFields = ['jenis_ki', 'tgl_pendaftaran', 'no_permohonan', 'id_sertifikat'];
-    for (const f of priorityFields) {
-      if (record[f] !== undefined && record[f] !== null && record[f] !== '') {
-        let val = record[f];
-        if (f.includes('tgl') || f.includes('tanggal')) {
-          val = formatDate(val);
-        } else {
-          val = formatSnakeCaseValue(val);
-        }
-        out += `- ** ${fieldMap[f] || f}**: ${val} \n`;
-      }
-    }
-
-    // Fakultas (sebelum inventor)
-    if (record.fakultas_inventor) {
-      const arr = String(record.fakultas_inventor).split(/,|<br\s*\/?>|\n/i).map(s => s.trim()).filter(Boolean);
-      out += `- ** Fakultas **: ${[...new Set(arr)].join(', ')} \n`;
-    }
-
-    // Instansi - hanya tampilkan jika bukan ITB
-    if (record.nama_instansi_inventor) {
-      const instRaw = String(record.nama_instansi_inventor).replace(/<br\s*\/?>\s*/gi, ', ');
-      const instUniq = [...new Set(instRaw.split(',').map(s => s.trim()).filter(s => s && !/(Institut\s+Teknologi\s+Bandung|\bITB\b)/i.test(s)))];
-      if (instUniq.length > 0) {
-        out += `- ** Instansi **: ${instUniq[0]} \n`;
-      }
-    }
-
-    // Mitra - hanya tampilkan jika bukan ITB
-    if (record.mitra_kepemilikan && !/(Institut\s+Teknologi\s+Bandung|\bITB\b)/i.test(record.mitra_kepemilikan)) {
-      out += `- ** Mitra **: ${record.mitra_kepemilikan} \n`;
-    }
-
-    if (record.abstrak) {
-      const abstrak = String(record.abstrak).replace(/<[^>]+>/g, '').trim();
-      if (abstrak.length > 0) {
-        out += `- ** Abstrak **: ${abstrak.slice(0, 300)}${abstrak.length > 300 ? '...' : ''} \n`;
-      }
-    }
-
-    // Tgl Sertifikasi (eksplisit)
-    if (record.tgl_sertifikasi) out += `- ** Tanggal Sertifikasi **: ${formatDate(record.tgl_sertifikasi)} \n`;
-
-    // Status KI (eksplisit)
-    if (record.status_ki) out += `- ** Status KI **: ${formatSnakeCaseValue(record.status_ki)} \n`;
-
-    // Status Dokumen (eksplisit)
-    if (record.status_dokumen) out += `- ** Status Dokumen **: ${formatSnakeCaseValue(record.status_dokumen)} \n`;
-
-    // Pekerjaan Inventor (eksplisit)
-    if (record.pekerjaan_inventor) {
-      const parts = String(record.pekerjaan_inventor).split(/,|<br\s*\/?>|\n/i).map(s => s.trim()).filter(Boolean);
-      out += `- ** Pekerjaan Inventor **: ${formatSnakeCaseValue([...new Set(parts)].join(', '))} \n`;
-    }
-
-    // Inventor — TERAKHIR karena datanya biasanya panjang
-    if (record.inventor) {
-      let invClean = formatInventorList(record.inventor).split('\n').map(s => s.replace(/^- /, '').trim()).filter(Boolean).join(', ');
-      if (!invClean) {
-        invClean = String(record.inventor).replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '').split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ');
-      }
-      out += `- ** Inventor **: ${invClean} \n`;
-    }
-
-    // Additional fields fallback
-    const handledFields = [...priorityFields, 'judul', 'inventor', 'fakultas_inventor', 'nama_instansi_inventor', 'mitra_kepemilikan', 'abstrak', 'tgl_sertifikasi', 'status_dokumen', 'pekerjaan_inventor', 'id', 'id_ki'];
-    for (const [k, v] of Object.entries(record)) {
-      if (!handledFields.includes(k)) {
-        if (v !== null && v !== '') {
-          const cleanK = k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          let formattedV = v;
-          if (k.includes('tgl') || k.includes('tanggal')) {
-            formattedV = formatDate(v);
-          } else {
-            const parts = String(v).split(/,|<br\s*\/?>|\n/i).map(s => s.trim()).filter(Boolean);
-            formattedV = formatSnakeCaseValue([...new Set(parts)].join(', '));
-          }
-          out += `- ** ${cleanK}**: ${formattedV} \n`;
-        }
-      }
-    }
-
-    return out.trim() || JSON.stringify(record, null, 2);
-  }
-
-  formatMultipleRecords(q, data, offset, total) {
-    if (!data || !data.length) return 'Tidak ada data.';
-
-    const items = data.slice(0, 10);
-    const skipFields = ['id', 'id_ki', 'tkt', 'created_at', 'updated_at'];
-    const columns = Object.keys(items[0] || {});
-
-    // Deteksi apakah ini query khusus inventor (hanya kaitan nama/entitas)
-    const isInventorQuery = columns.length <= 4 &&
-      (columns.includes('inventor') || columns.includes('nama_instansi_inventor') || columns.includes('fakultas_inventor') || columns.includes('pekerjaan_inventor'));
-
-    if (isInventorQuery) {
-      return this.formatInventorList(items, offset, total);
-    }
-
-    let out = `Ditemukan ** ${formatNumber(total)}** data.Berikut ${formatNumber(offset + 1)} -${formatNumber(offset + items.length)} diantaranya: \n\n`;
-
-    out += items.map((row, i) => {
-      const num = offset + i + 1;
-      let item = ``;
-
-      // Judul sebagai header
-      if (row.judul) {
-        item += `** ${num}. ${row.judul}**\n`;
-      } else {
-        item += `** ${num}.**\n`;
-      }
-
-      // Jenis KI
-      if (row.jenis_ki) item += `- ** Jenis KI **: ${formatSnakeCaseValue(row.jenis_ki)} \n`;
-
-      // Tanggal pendaftaran
-      if (row.tgl_pendaftaran) item += `- ** Tgl.Pendaftaran **: ${formatDate(row.tgl_pendaftaran)} \n`;
-
-      // No permohonan
-      if (row.no_permohonan) item += `- ** No.Permohonan **: ${row.no_permohonan} \n`;
-
-      // Sertifikat
-      if (row.id_sertifikat) item += `- ** No.Sertifikat **: ${row.id_sertifikat} \n`;
-
-      // Instansi - hanya tampilkan jika bukan ITB (untuk mengurangi redundansi)
-      if (row.nama_instansi_inventor) {
-        const instRaw = String(row.nama_instansi_inventor).replace(/<br\s*\/?>\s*/gi, ', ');
-        const instParts = instRaw.split(',').map(s => s.trim()).filter(s => s && !/(Institut\s+Teknologi\s+Bandung|\bITB\b)/i.test(s));
-        if (instParts.length > 0) {
-          item += `- ** Instansi **: ${instParts[0]} \n`;
-        }
-      }
-
-      // Mitra - hanya tampilkan jika bukan ITB
-      if (row.mitra_kepemilikan && !/(Institut\s+Teknologi\s+Bandung|\bITB\b)/i.test(row.mitra_kepemilikan)) {
-        item += `- ** Mitra **: ${row.mitra_kepemilikan} \n`;
-      }
-
-      // Tanggal Sertifikasi
-      if (row.tgl_sertifikasi) item += `- ** Tgl.Sertifikasi **: ${formatDate(row.tgl_sertifikasi)} \n`;
-
-      // Status KI
-      if (row.status_ki) item += `- ** Status KI **: ${formatSnakeCaseValue(row.status_ki)} \n`;
-
-      // Status Dokumen
-      if (row.status_dokumen) item += `- ** Status Dokumen **: ${formatSnakeCaseValue(row.status_dokumen)} \n`;
-
-      // Inventor
-      if (row.inventor) {
-        let invClean = formatInventorList(row.inventor).split('\n').map(s => s.replace(/^- /, '').trim()).filter(Boolean).join(', ');
-        if (!invClean) {
-          invClean = String(row.inventor).replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '').split(/[,\n]/).map(s => s.trim()).filter(Boolean).join(', ');
-        }
-        item += `- ** Inventor **: ${invClean} \n`;
-      }
-
-      // Fallback for custom columns
-      const standardCols = ['judul', 'jenis_ki', 'status_ki', 'tgl_pendaftaran', 'no_permohonan', 'id_sertifikat', 'inventor', 'fakultas_inventor', 'nama_instansi_inventor', 'mitra_kepemilikan', 'abstrak', 'tgl_sertifikasi', 'status_dokumen', 'pekerjaan_inventor', ...skipFields];
-      for (const col of columns) {
-        if (!standardCols.includes(col) && row[col] !== null && row[col] !== '') {
-          let val = row[col];
-          if (col.includes('tgl') || col.includes('tanggal')) {
-            val = formatDate(val);
-          } else {
-            const parts = String(val).split(/,|<br\s*\/?>|\n/i).map(s => s.trim()).filter(Boolean);
-            val = formatSnakeCaseValue([...new Set(parts)].join(', '));
-          }
-          const cleanCol = col.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          item += `- ** ${cleanCol}**: ${val} \n`;
-        }
-      }
-
-      return item.trim();
-    }).join('\n\n');
-
-    if (total > offset + items.length) {
-      const sisa = total - offset - items.length;
-      const isExplicitLimit = q.match(/\b(tampilkan|kasih|minta|lihat)\s+(\d+)\b/i) || q.match(/\b(\d+)\s+(data|saja)\b/i);
-      if (!isExplicitLimit) {
-        out += `\n\nMasih ada ** ${formatNumber(sisa)}** data lagi.Apakah Anda ingin melihat data berikutnya ? Silakan ketik "**lanjut**" ya.`;
-      }
-    }
-
-
-
-    return out;
-  }
-
-  formatInventorList(items, offset, total) {
-    const inventors = [];
-
-    for (const row of items) {
-      const invRaw = row.inventor || '';
-      const instansi = row.nama_instansi_inventor || row.fakultas_inventor || '';
-      const pekerjaan = row.pekerjaan_inventor || '';
-
-      // Parse inventor yang mungkin multiple dalam satu cell
-      const invParts = invRaw
-        .replace(/<br\s*\/?>/gi, '|||')
-        .replace(/<[^>]+>/g, '')
-        .split(/\|\|\||,(?!\s*(S\.|M\.|Ph|Dr|Prof|Ir))/i)
-        .map(s => s.trim())
-        .filter(s => s && s.length > 3);
-
-      for (const inv of invParts) {
-        const cleanName = inv.replace(/\s*\([^)]*-[^)]*\)\s*$/g, '').trim();
-        if (cleanName && cleanName.length > 3) {
-          const instParts = instansi.split(',').map(s => s.trim()).filter(Boolean);
-          const inst = instParts[0] || '-';
-          const job = pekerjaan.split(',')[0]?.trim() || '-';
-          inventors.push({ name: cleanName, instansi: inst, pekerjaan: job });
-        }
-      }
-    }
-
-    // Deduplicate
-    const unique = [];
-    const seen = new Set();
-    for (const inv of inventors) {
-      const key = `${inv.name}| ${inv.instansi} `;
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(inv);
-      }
-    }
-
-    const display = unique.slice(0, 50);
-
-    // Perbaikan label agar tidak ambigu: 1 baris data bisa berisi banyak nama inventor
-    let out = `Ditemukan ** ${formatNumber(total)}** data inventor.Berikut daftar nama yang tercatat: \n\n`;
-
-    out += display.map((inv, i) => {
-      let line = `${offset + i + 1}. ** ${inv.name}** `;
-      if (inv.instansi !== '-') line += `\n   Instansi: ${inv.instansi} `;
-      if (inv.pekerjaan !== '-') line += `\n   Pekerjaan: ${inv.pekerjaan} `;
-      return line;
-    }).join('\n\n');
-
-    if (total > offset + display.length) {
-      const sisa = total - offset - display.length;
-      out += `\n\nMasih ada ** ${formatNumber(sisa)}** data lagi.Apakah Anda ingin melihat data berikutnya ? Silakan ketik "lanjut" ya.`;
-    }
-
-    return out;
-  }
-
-  // ================================================================
-  // MODIFIKASI QUERY SEBELUMNYA
-  // ================================================================
-  async handleQueryModification(q, userId, lastEntry, progressCallback) {
-    if (!lastEntry?.lastSqlQuery || !lastEntry?.lastDatabase) return null;
-
-    // ═══ RULE-BASED: COLUMN MODIFIER — Deteksi tanpa AI (lebih cepat & akurat) ═══
-    // Kasus: user minta tampil kolom berbeda dari query sebelumnya
-    // "liatkan semua nya", "tampilkan lengkap", "jangan hanya judul, tampilkan semua"
-    const isColumnExpand = /\b(liatkan\s+semua|lihat\s+semua|tampilkan\s+(?:semua|lengkap)|semua\s+kolomnya|data\s+lengkap(?:nya)?|selengkapnya|penuh(?:nya)?|semua\s+field|semua\s+datanya|jangan\s+hanya|bukan\s+cuma|bukan\s+hanya|tampilkan\s+juga|plus\s+kolom|tambah\s+kolom)\b/i.test(q);
-
-    if (isColumnExpand && lastEntry.lastSqlQuery) {
-      // Ganti SELECT [kolom spesifik] → SELECT * tapi pertahankan FROM, WHERE, ORDER BY, LIMIT
-      const originalSQL = lastEntry.lastSqlQuery;
-      const hasSpecificColumns = /^SELECT\s+(?![\*\s])([\w\s`,._]+?)\s+FROM\b/i.test(originalSQL);
-
-      if (hasSpecificColumns) {
-        // Ganti SELECT <kolom> ... jadi SELECT * ...
-        const expandedSQL = originalSQL.replace(
-          /^(SELECT\s+)(?![\*])([\s\S]+?)(\s+FROM\b)/i,
-          'SELECT * $3'
-        );
-        debugLog('COLUMN_EXPAND_RULE', { from: originalSQL.substring(0, 80), to: expandedSQL.substring(0, 80) });
-        console.log(`🔧 Column expand: "${q}" → SELECT *`);
-
-        sqlValidator.setSchemaCache(schemaCache);
-        const expandValidation = sqlValidator.validate(expandedSQL, lastEntry.lastDatabase);
-        const finalExpandSQL = expandValidation.fixedSQL || expandedSQL;
-
-        return await this.handleDatabaseQuery(
-          lastEntry.lastQuestion || q,
-          userId, null,
-          { ...lastEntry, skipConfirmation: true, pendingDataDisplay: false, lastOffset: 0, wasCountQuery: false },
-          progressCallback,
-          [lastEntry.lastDatabase],
-          false,
-          finalExpandSQL
-        );
-      }
-    }
-
-    // ═══ RULE-BASED: COLUMN RESTRICT — User minta kolom lebih sedikit ═══
-    // "tampilkan judul dan nomer permohonan saja", "cukup nama dan status"
-    const columnRestrictMatch = q.match(/\b(?:tampilkan|lihat|liat|show|kasih)\s+(?:hanya\s+)?(.+?)\s+(?:saja|aja|doang)\b/i)
-      || q.match(/\b(?:saya\s+mau|saya\s+ingin|aku\s+mau)\s+(?:liat|lihat|tampil|tampilkan)\s+(.+?)\s+(?:saja|aja)\b/i);
-
-    if (columnRestrictMatch && lastEntry.lastSqlQuery) {
-      const colHint = columnRestrictMatch[1].trim();
-      // Only proceed jika ada FROM di SQL sebelumnya
-      const fromMatch = lastEntry.lastSqlQuery.match(/FROM\s+(.+)/i);
-      if (fromMatch && colHint.length > 2 && colHint.length < 80) {
-        debugLog('COLUMN_RESTRICT_HINT', colHint);
-        // Biarkan AI handle tapi dengan context yang lebih terarah
-        const restrictPrompt = `Kamu adalah SQL Expert MySQL. Modifikasi query ini untuk HANYA menampilkan kolom: "${colHint}".
-
-Query asli: ${lastEntry.lastSqlQuery}
-
-ATURAN:
-- Pertahankan semua kondisi WHERE, ORDER BY, LIMIT yang sudah ada
-- Hanya ubah bagian SELECT
-- Jika nama kolom tidak pasti, gunakan yang paling mendekati dari query asli
-- Output HANYA SQL yang dimodifikasi, tanpa penjelasan`;
-
-        const restrictResult = await this.askAI(restrictPrompt, 0, 0, 0.1);
-        if (restrictResult && !restrictResult.includes('BUKAN')) {
-          const restrictSQL = this.cleanSQLQuery(restrictResult);
-          if (restrictSQL) {
-            sqlValidator.setSchemaCache(schemaCache);
-            const val = sqlValidator.validate(restrictSQL, lastEntry.lastDatabase);
-            const finalSQL = val.fixedSQL || restrictSQL;
-            console.log(`🔧 Column restrict: "${colHint}" → ${finalSQL.substring(0, 80)}`);
-            return await this.handleDatabaseQuery(
-              q, userId, null,
-              { ...lastEntry, skipConfirmation: true, lastOffset: 0, wasCountQuery: false },
-              progressCallback, [lastEntry.lastDatabase], false, finalSQL
-            );
-          }
-        }
-      }
-    }
-
-    // ═══ AI-BASED: Modifikasi umum (filter, sort, limit) ═══
-    const prompt = `Kamu adalah SQL Expert.User ingin MEMODIFIKASI query sebelumnya.
-
-Query sebelumnya: "${lastEntry.lastSqlQuery}"
-Permintaan modifikasi user: "${q}"
-
-Modifikasi yang mungkin diminta:
-    - Tambah / hapus kolom(SELECT)
-      - Ganti filter(WHERE)
-        - Ganti sorting(ORDER BY)
-          - Ganti limit
-
-Jika permintaan ini BUKAN modifikasi query(misalnya pertanyaan baru yang tidak berhubungan), jawab: BUKAN_MODIFIKASI
-
-Jika modifikasi, output HANYA SQL yang sudah dimodifikasi.`;
-
-    const result = await this.askAI(prompt, 0, 0, 0.1);
-    if (!result || result.includes('BUKAN_MODIFIKASI')) return null;
-
-    const newSQL = this.cleanSQLQuery(result);
-    if (!newSQL) return null;
-
-    // Validasi SQL terhadap schema menggunakan SQL Validator
-    sqlValidator.setSchemaCache(schemaCache);
-    const modValidation = sqlValidator.validate(newSQL, lastEntry.lastDatabase);
-    if (!modValidation.valid) {
-      debugLog('MOD_SQL_INVALID', modValidation.errors);
-      return null;
-    }
-    const finalModSQL = modValidation.fixedSQL || newSQL;
-
-    // Eksekusi ulang melalui handleDatabaseQuery agar tetap mendapatkan format AI (termasuk intro/summary)
-    return await this.handleDatabaseQuery(
-      q,
-      userId,
-      null,
-      { ...lastEntry, skipConfirmation: false, pendingDataDisplay: false, lastOffset: 0, wasCountQuery: false },
-      progressCallback,
-      [lastEntry.lastDatabase],
-      false,
-      finalModSQL
-    );
-  }
-
-  // ================================================================
-  // SELECTION MODE (user ketik nomor untuk detail)
-  // ================================================================
-  async handleSelectionMode(q, userId, lastEntry, progressCallback) {
-    if (!lastEntry) return null;
-
-    // Pending database selection
-    if (lastEntry.pendingDatabaseSelection) {
-      const { databases, allResults } = lastEntry.pendingDatabaseSelection;
-      const qLower = q.toLowerCase();
-      const db = databases.find(d => qLower.includes(d.toLowerCase()) || qLower.includes(this.formatDbName(d).toLowerCase()));
-      if (db) {
-        const res = allResults.find(r => r.database === db);
-        const formatted = await this.formatResponse(lastEntry.pendingDatabaseSelection.originalQuestion, res.data, db, 0, res.total);
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", formatted, {
-          lastDatabase: db,
-          lastMultipleDatabases: [res],
-          lastQuestion: lastEntry.pendingDatabaseSelection.originalQuestion
-        });
-        return { type: "answer", message: formatted };
-      }
-    }
-
-    // ═══ PENDING DATA DISPLAY (User jawab "ya" / "tidak" setelah hitungan/konfirmasi) ═══
-    if (lastEntry.pendingDataDisplay) {
-      const qLower = q.toLowerCase();
-      // USER SETUJU: Tampilkan datanya
-      if (/^(ya|iya|boleh|mau|tampilkan|liat|oke|siap|baik|lanjut)/i.test(qLower)) {
-        debugLog('PENDING_DISPLAY_ACCEPTED', q);
-
-        // FIX: Jika ini dari COUNT query, maka kita harus ubah SQL-nya dari COUNT -> SELECT LIST
-        // Kalau kita run SQL count lagi, ya dia bakal nanya lagi (loop)
-        let modifiedSQL = lastEntry.lastSqlQuery;
-        if (lastEntry.wasCountQuery && modifiedSQL) {
-          // Transform "SELECT COUNT(DISTINCT x) ..." jadi "SELECT DISTINCT x ..."
-          // Atau "SELECT COUNT(*) ..." jadi "SELECT * ..."
-          modifiedSQL = modifiedSQL
-            .replace(/SELECT\s+COUNT\(\s*DISTINCT\s+([\w\s`,._]+?)\s*\)/i, 'SELECT DISTINCT $1')
-            .replace(/SELECT\s+COUNT\(\s*[\w\s`,\._\*]+?\s*\)/i, 'SELECT *')
-            .replace(/LIMIT\s+\d+/i, 'LIMIT 10'); // Reset limit kearah data display
-
-          debugLog('SQL_TRANSFORMED_FOR_DETAIL', { from: lastEntry.lastSqlQuery, to: modifiedSQL });
-        }
-
-        return await this.handleDatabaseQuery(lastEntry.lastQuestion || lastEntry.originalQuestion, userId, null, {
-          ...lastEntry,
-          skipConfirmation: true,
-          pendingDataDisplay: false,
-          lastOffset: 0,
-          lastSqlQuery: modifiedSQL // Simpan di context juga
-        }, progressCallback, [lastEntry.lastDatabase], false, modifiedSQL); // Pass as overrideSql argument
-      }
-      // USER MENOLAK: Berhenti
-      if (/^(tidak|nggak|ngga|ga|jangan|nanti|cl|cancel|batal|no)/i.test(qLower)) {
-        debugLog('PENDING_DISPLAY_REJECTED', q);
-        const msg = "Baik, saya tidak akan menampilkan datanya. Ada hal lain yang ingin Anda ketahui seputar data Kekayaan Intelektual? 😊";
-        this.addToContext(userId, "user", q);
-        this.addToContext(userId, "assistant", msg);
-        return { type: "answer", message: msg };
-      }
-    }
-
-    // User ketik nomor (1, 2, 3) 
-    // Pisahkan deteksi antara minta "data" secara eksplisit atau cuma ngeluarin angka
-    const isExplicitDataMsg = q.match(/^(?:detail|data|buka|lihat|tampilkan|tunjukkan|coba\s+lihat)(?:\s+(?:yang|ke|data|nya|no\.?|nomor|nomer))*\s+(\d+)$/i)
-      || q.match(/^(?:yang\s+)?(?:no\.?|nomor|nomer)\s+(\d+)(?:\s+(?:dong|ya|saja|aja))?$/i)
-      || q.match(/^(?:nomer|nomor)\s+(\d+)$/i)
-      || q.match(/^(?:no\.?|nomor|nomer|pilih)\s*(\d+)$/i);
-    const isGenericNumber = q.match(/^(\d+)$|^(?:no\.?\s*|nomor\s*|nomer\s*)(\d+)$/i);
-    const numMatch = isExplicitDataMsg || isGenericNumber;
-
-    debugLog('NUMBER_SELECTION_DETECTED', { q, match: !!numMatch });
-
-    if (numMatch) {
-      const num = parseInt(numMatch[1] || numMatch[2]);
-
-      // FIX: Ambil rekomendasi dari conversationHistory (bukan dari lastEntry.content yang tidak ada)
-      // Cari pesan asisten terakhir yang berisi rekomendasi pertanyaan
-      const historyContext = this.getContext(userId);
-      let recommendations = [];
-      // Scan dari pesan terakhir ke belakang untuk cari rekomendasi
-      for (let i = historyContext.length - 1; i >= 0; i--) {
-        const entry = historyContext[i];
-        if (entry.role === 'assistant' && entry.content) {
-          const recs = this.extractRecommendations(entry.content);
-          if (recs.length > 0) {
-            recommendations = recs;
-            break;
-          }
-        }
-      }
-      // Fallback: cek lastEntry.content juga
-      if (recommendations.length === 0 && lastEntry?.content) {
-        recommendations = this.extractRecommendations(lastEntry.content);
-      }
-
-      const hasRecommendations = num > 0 && num <= recommendations.length;
-
-      // ALPERT: Helper function untuk mengeksekusi seleksi Data Item
-      const trySelectDataItem = async () => {
-        if (lastEntry?.lastMultipleDatabases?.[0]?.data && !q.includes("pertanyaan")) {
-          const data = lastEntry.lastMultipleDatabases[0].data;
-          const offset = lastEntry.lastOffset || 0;
-          let item = null;
-
-          if (num > offset && num <= offset + data.length) {
-            item = data[num - 1 - offset];
-          } else if (num > 0 && num <= data.length) {
-            item = data[num - 1];
-          }
-
-          if (item) {
-            // --- DRILL-DOWN LOGIC ---
-            // Jika item hanya punya 1-2 kolom dan salah satunya adalah kategori (jenis_ki, fakultas, dll)
-            const keys = Object.keys(item);
-            const categoryKey = keys.find(k => /jenis_ki|fakultas_inventor|pemberi_ki|pekerjaan_inventor/i.test(k));
-
-            // Jika ini adalah hasil dari GROUP BY atau DISTINCT list (biasanya item pendek)
-            if (categoryKey && keys.length <= 3) {
-              const categoryValue = item[categoryKey];
-              debugLog('DRILL_DOWN_CATEGORY_AUTO', { categoryKey, categoryValue });
-              if (progressCallback) progressCallback(`Mencari data detil untuk "${categoryValue}"...`);
-
-              return await this.handleDatabaseQuery(
-                `tampilkan data ${categoryValue}`,
-                userId, null, { ...lastEntry, wasCountQuery: false, lastOffset: 0, skipConfirmation: true },
-                progressCallback, [lastEntry.lastDatabase]
-              );
-            }
-
-            // --- NORMAL DETAIL LOGIC ---
-            let title = item.judul || item.nama || item.no_permohonan || item.jenis_ki || "Data Detail";
-            const formatted = `Menampilkan rincian untuk: **${title}**\n\n` + this.formatSingleRecord(item);
-
-            this.addToContext(userId, "user", q);
-            // SPREAD lastEntry agar lastData (list sebelumnya) TETAP ADA untuk export CSV
-            this.addToContext(userId, "assistant", formatted, {
-              ...lastEntry,
-              lastQuestion: `Detail untuk: ${title}`,
-              lastItemDetail: item,
-              wasCountQuery: false,
-              pendingDataDisplay: false
-            });
-            return { type: "answer", message: formatted };
-          }
-        }
-        return null;
-      };
-
-      // ALUR 1: User bilang EXPLISIT minta "detail 1" / "data 1", UTAMAKAN List Item
-      if (isExplicitDataMsg) {
-        const itemResult = await trySelectDataItem();
-        if (itemResult) return itemResult;
-      }
-
-      // ALUR 2: User hanya ketik "1" atau "nomor 1", UTAMAKAN Rekomendasi Pertanyaan
-      // Jika nomor valid dengan list rekomendasi, langsung kerjakan rekomendasinya
-      if (hasRecommendations && !isExplicitDataMsg) {
-        const pickedQ = recommendations[num - 1];
-        debugLog('RECOMMENDATION_PICKED', pickedQ);
-
-        if (progressCallback) progressCallback(`Baik, memproses pilihan rekomendasi: "${pickedQ}"...`);
-
-        // Langsung lempar kembali ke otak utama agar diproses secara utuh (termasuk cek edukasi/hipotetis)
-        // Kita bypass lastEntry agar ini dianggap sebagai pencarian/pertanyaan fresh baru
-        const contextManager = require('./core/context-manager');
-        const session = contextManager.getSession(userId);
-        if (session) session.clearPendingConfirmation();
-
-        return await this._processMessageCore(pickedQ, userId, progressCallback);
-      }
-
-      // ALUR 3: Fallback ke Data Item jika tidak ada rekomendasi atau nomor rekomendasi tidak pas
-      if (!isExplicitDataMsg) {
-        const itemResult = await trySelectDataItem();
-        if (itemResult) return itemResult;
-      }
-    }
-
-    return null;
-  }
-
-  // ================================================================
-  // NO DATA RESPONSE
-  // ================================================================
-  async generateNoDataResponse(q) {
-    // Kumpulkan info schema untuk saran yang kontekstual
-    let schemaInfo = '';
-    let columnHints = [];
-    try {
-      const dbEntries = Object.entries(schemaCache);
-      if (dbEntries.length > 0) {
-        schemaInfo = dbEntries.map(([db, tables]) => {
-          const tableInfo = Object.entries(tables).map(([tName, tData]) => {
-            const cols = tData.columns.split(',')
-              .map(c => c.trim().split(' ')[0])
-              .filter(c => !['id', 'created_at', 'updated_at'].includes(c))
-              .slice(0, 10);
-            columnHints = cols;
-            return `  Tabel ${tName}: ${cols.join(', ')}`;
-          }).join('\n');
-          return `Database ${this.formatDbName(db)}:\n${tableInfo}`;
-        }).join('\n');
-      }
-    } catch (e) { /* skip */ }
-
-    // ═══ YEAR-AWARE NO DATA RESPONSE — Cek rentang tahun yang tersedia ═══
-    const qLower = q.toLowerCase();
-    const yearMatch = q.match(/\b(19\d{2}|20\d{2})\b/);
-    let yearContext = '';
-    if (yearMatch) {
-      const askedYear = parseInt(yearMatch[1]);
-      try {
-        const configs = dbHelper.getAllActiveConnectionConfigs();
-        for (const cfg of configs) {
-          try {
-            const conn = await mysql.createConnection(cfg);
-            // Dynamically discover table name
-            let tableName = 'data_import';
-            try {
-              const cachedTables = Object.keys(schemaCache[cfg.database] || {});
-              if (cachedTables.length > 0) {
-                tableName = cachedTables[0];
-              } else {
-                const [tables] = await conn.execute('SHOW TABLES');
-                if (tables.length > 0) tableName = Object.values(tables[0])[0];
-              }
-            } catch (e) { /* use default */ }
-
-            // Cek apakah tahun yang diminta benar-benar tidak ada di semua kolom tanggal
-            let countForYear = 0;
-            const dateColumns = ['tgl_pendaftaran', 'tgl_sertifikasi'];
-            for (const col of dateColumns) {
-              try {
-                const [[countRow]] = await conn.execute(
-                  `SELECT COUNT(*) AS cnt FROM \`${tableName}\` WHERE YEAR(\`${col}\`) = ?`,
-                  [askedYear]
-                );
-                countForYear += (countRow?.cnt || 0);
-              } catch (e) { /* column mungkin tidak ada */ }
-            }
-
-            if (countForYear > 0) {
-              // Data ADA! Ini bukan masalah no-data, tapi SQL generation yang salah
-              yearContext = `PENTING: Data untuk tahun ${askedYear} MEMANG ADA sebanyak ${countForYear} entri di database. Sampaikan bahwa data ditemukan dan sarankan user untuk mencoba ulang dengan kata kunci berbeda.`;
-              await conn.end();
-              break;
-            }
-
-            const [yearRows] = await conn.execute(
-              `SELECT MIN(YEAR(tgl_pendaftaran)) AS min_year, MAX(YEAR(tgl_pendaftaran)) AS max_year, COUNT(*) AS total FROM \`${tableName}\` WHERE tgl_pendaftaran IS NOT NULL`
-            );
-            await conn.end();
-            if (yearRows.length > 0 && yearRows[0].min_year && yearRows[0].max_year) {
-              yearContext = `Data KI yang tersedia mencakup pendaftaran dari tahun ${yearRows[0].min_year} sampai ${yearRows[0].max_year} (total ${yearRows[0].total} data). Tidak ditemukan data pada tahun ${askedYear}.`;
-            }
-          } catch (e) { debugLog('YEAR_CHECK_DB_ERROR', e.message); }
-        }
-      } catch (e) {
-        debugLog('YEAR_RANGE_CHECK_ERROR', e.message);
-      }
-    }
-
-    // Deteksi kemungkinan penyebab berdasarkan kata kunci
-    let possibleCause = '';
-    if (qLower.includes('investor')) possibleCause = 'Catatan: "investor" bukan istilah yang ada di database. Kemungkinan maksudnya adalah "inventor" (penemu/peneliti).';
-    else if (qLower.includes('instansi') && !qLower.includes('nama_instansi')) possibleCause = 'Untuk data instansi, coba gunakan: "tampilkan daftar instansi" atau "ada instansi apa saja di KI".';
-    else if (yearContext) possibleCause = yearContext;
-    else if (qLower.includes('tahun') || /\b\d{4}\b/.test(q)) possibleCause = 'Filter tahun mungkin tidak cocok karena tidak ada data KI yang terdaftar pada tahun tersebut.';
-
-    // ═══ FUZZY NAME CHECK — Cari saran nama jika 0 hasil ═══
-    let fuzzySuggestions = [];
-    if (!yearContext && (qLower.includes('ki') || qLower.includes('data') || qLower.includes('daftar') || qLower.includes('siapa') || qLower.includes('milik'))) {
-      try {
-        const words = q.split(/\s+/).filter(w => w.length > 3 && !/^(daftar|data|tampilkan|lihat|cari|ada|ki|siapa|apa|milik|punya|pak|bapak|ibu|bu|bapaknya|ya|dong)$/i.test(w));
-        if (words.length > 0) {
-          const configs = dbHelper.getAllActiveConnectionConfigs();
-          for (const cfg of configs) {
-            try {
-              const conn = await mysql.createConnection(cfg);
-
-              // Temukan tabel yang memiliki kolom 'inventor' secara dinamis
-              let tableName = null;
-              const dbsWithTables = Object.keys(schemaCache);
-              if (dbsWithTables.includes(cfg.database)) {
-                const tables = schemaCache[cfg.database];
-                tableName = Object.keys(tables).find(t => {
-                  const cols = (tables[t].columns || '').toLowerCase();
-                  return cols.includes('inventor') || cols.includes('penemu') || cols.includes('pengarang') || cols.includes('nama');
-                });
-              }
-
-              if (!tableName) {
-                const [allTables] = await conn.execute('SHOW TABLES');
-                for (const tObj of allTables) {
-                  const t = Object.values(tObj)[0];
-                  try {
-                    const [cols] = await conn.execute(`SHOW COLUMNS FROM \`${t}\``);
-                    const hasInventorCol = cols.some(c => {
-                      const f = c.Field.toLowerCase();
-                      return f.includes('inventor') || f.includes('penemu') || f.includes('nama');
-                    });
-                    if (hasInventorCol) { tableName = t; break; }
-                  } catch (e) { /* skip */ }
-                }
-              }
-
-              if (tableName) {
-                const [rows] = await conn.execute(`SELECT DISTINCT inventor FROM \`${tableName}\` WHERE ${words.map(() => 'inventor LIKE ?').join(' OR ')} LIMIT 150`, words.map(w => `%${w}%`));
-
-                if (rows.length > 0) {
-                  const natural = require('natural');
-                  const uniqueNames = rows.map(r => r.inventor).filter(Boolean);
-                  const scored = uniqueNames.map(name => {
-                    const nameParts = name.toLowerCase().split(/[,\s.]+/).filter(p => p.length > 2);
-
-                    // Hitung skor rata-rata kemiripan untuk SEMUA kata pencarian user
-                    const wordScores = words.map(w => {
-                      const partScores = nameParts.map(np => natural.JaroWinklerDistance(w.toLowerCase(), np));
-                      return Math.max(...partScores);
-                    });
-
-                    const avgScore = wordScores.reduce((a, b) => a + b, 0) / wordScores.length;
-                    return { name, score: avgScore };
-                  });
-
-                  // Filter dengan threshold lebih rendah (0.78) agar lebih toleran typo
-                  const topMatches = scored.filter(s => s.score > 0.78).sort((a, b) => b.score - a.score).slice(0, 3);
-                  fuzzySuggestions.push(...topMatches.map(m => m.name));
-                }
-              }
-              await conn.end();
-            } catch (e) { debugLog('FUZZY_DB_ITER_ERROR', e.message); }
-          }
-        }
-      } catch (e) { debugLog('FUZZY_NAME_GENERAL_ERROR', e.message); }
-    }
-
-    const fuzzyHint = fuzzySuggestions.length > 0
-      ? `SARAN NAMA MIRIP DARI DATABASE (Tampilkan nama ini dalam format **TEBAL**): ${[...new Set(fuzzySuggestions)].map(s => `**${s}**`).join(', ')}`
-      : '';
-
-    const prompt = `User bertanya: "${q}" tapi TIDAK ADA data yang relevan ditemukan di database Kekayaan Intelektual (KI) ITB.
-
-${fuzzyHint ? `INFO PENTING: ${fuzzyHint}\n\n` : ''}${possibleCause ? `FAKTA DARI DATABASE:\n${possibleCause}\n\n` : ''}${schemaInfo ? `DATABASE & KOLOM YANG TERSEDIA:\n${schemaInfo}\n\n` : ''}KONTEKS DATA KI:
-- Database berisi data KI ITB: Paten, Hak Cipta, Merek, Desain Industri.
-- Filter Utama: tahun, fakultas, inventor (penemu), nama instansi.
-
-TUGAS:
-1. Sampaikan bahwa data "${q}" tidak ditemukan secara JUJUR, TEGAS, dan RINGKAS.
-2. JANGAN berikan penjelasan filosofis tentang kata kunci tersebut. Fokus pada FAKTA DATABASE di atas.
-3. ${fuzzyHint ? `Gunakan info SARAN NAMA MIRIP di atas untuk bertanya "Apakah maksud Anda **[Nama]**?" secara dominan.` : (yearContext ? 'Jelaskan rentang data yang tersedia di database secara teknis.' : 'Sebutkan dengan singkat kemungkinan teknis (typo atau data belum terdaftar) dan berikan saran pencarian yang lebar.')}
-4. JAWAB LANGSUNG dalam 1-2 paragraf pendek. JANGAN berikan intro panjang seperti "Dalam situasi ini...".
-5. Berikan 3 rekomendasi pertanyaan alternatif yang dijamin ada datanya berdasarkan skema yang tersedia.`;
-
-    const aiResponse = await this.askAI(prompt, 0, 0, 0.4); // Lower temperature for stability
-    if (aiResponse && aiResponse.length > 20) {
-      return aiResponse;
-    }
-
-    // Fallback jika AI gagal — tetap berikan jawaban yang natural
-    if (yearMatch && yearContext) {
-      return `Maaf, tidak ditemukan data Kekayaan Intelektual (KI) ITB pada tahun **${yearMatch[1]}**. ${yearContext}\n\nBerikut beberapa pertanyaan yang bisa kami jawab:\n1. "Tampilkan data KI terbaru"\n2. "Berapa total KI yang terdaftar?"\n3. "Ada jenis KI apa saja?"`;
-    }
-    return `Maaf, tidak ditemukan data yang relevan untuk "${q}".\n\nKemungkinan penyebab:\n- Kata kunci tidak cocok dengan data yang tersedia\n- Filter terlalu spesifik\n\nCoba pertanyaan ini:\n1. Tampilkan semua data yang tersedia\n2. Berapa total data di database?\n3. Daftar kategori/jenis data yang ada`;
-  }
-
-  // ================================================================
-  // SPECIAL INTENT HANDLERS
-  // ================================================================
-  async checkDuplicateTitles(q, userId, configs, fuzzy = false) {
-    let allDuplicates = [];
-
-    for (const conf of configs) {
-      try {
-        const conn = await mysql.createConnection(conf);
-        await this.ensureSchemaCache(conn, conf.database);
-        const schema = schemaCache[conf.database];
-        const tables = Object.keys(schema);
-
-        let targetTable = null, titleColumn = null, ownerColumn = null;
-        for (const table of tables) {
-          const cols = schema[table].columns.toLowerCase();
-          if (cols.includes('judul') || cols.includes('title')) {
-            targetTable = table;
-            titleColumn = cols.includes('judul') ? 'judul' : 'title';
-            ownerColumn = cols.includes('inventor') ? 'inventor' : (cols.includes('pemilik') ? 'pemilik' : null);
-            break;
-          }
-        }
-
-        if (!targetTable || !ownerColumn) { await conn.end(); continue; }
-
-        const [rows] = await conn.execute(`
-          SELECT ${titleColumn} as judul,
-      GROUP_CONCAT(DISTINCT ${ownerColumn} SEPARATOR ' | ') as pemilik,
-      COUNT(*) as jumlah
-          FROM ${targetTable}
-          WHERE ${titleColumn} IS NOT NULL AND ${titleColumn} != ''
-          GROUP BY ${titleColumn}
-          HAVING COUNT(DISTINCT ${ownerColumn}) > 1
-          LIMIT 20
-        `);
-        await conn.end();
-        if (rows.length > 0) allDuplicates.push({ database: conf.database, data: rows });
-      } catch (e) { debugLog('DUPLICATE_ERROR', e.message); }
-    }
-
-    if (!allDuplicates.length) {
-      return { type: "answer", message: "Tidak ditemukan judul yang sama dengan pemilik berbeda." };
-    }
-
-    let all = allDuplicates.flatMap(d => d.data.map(r => ({ ...r, db: d.database })));
-    const list = all.slice(0, 15).map((d, i) =>
-      `${i + 1}. ** ${d.judul}**\n   Pemilik: ${d.pemilik} \n   Jumlah entri: ${d.jumlah} \n   Database: ${this.formatDbName(d.db)} `
-    ).join('\n\n');
-
-    const msg = `Ditemukan ${all.length} judul dengan pemilik berbeda: \n\n${list} \n\nPotensi konflik kepemilikan.Disarankan verifikasi lebih lanjut.`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg, data: all };
-  }
-
-  async checkOwnershipConflict(q, userId, configs) {
-    const msg = `Untuk analisis konflik entitas / kepemilikan, silakan spesifikasikan: \n\n1.Entitas tertentu: "cek konflik pada [nama data/judul]"\n2.Pemilik tertentu: "konflik kepemilikan oleh [nama orang/instansi]"\n\nAtau ketik "duplikat entri" untuk deteksi otomatis.`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  async detectAnomalies(q, userId, configs) {
-    const msg = `Jenis anomali yang bisa dideteksi: \n\n1.Duplikasi nama / judul: "ada duplikat data?"\n2.Data kosong: "data tanpa entitas"\n3.Status tidak wajar: "status tidak konsisten"\n4.Tanggal tidak valid: "tanggal tidak valid"\n\nSebutkan jenis anomali yang ingin diperiksa.`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  async checkDataQuality(q, userId, configs) {
-    const msg = `Aspek kualitas data yang bisa diperiksa: \n\n1.Field kosong: "data tanpa nama" atau "data tanpa deksripsi"\n2.Data tidak lengkap: "data dengan info tidak lengkap"\n\nSebutkan aspek yang ingin diperiksa.`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  async handleScenarioAnalysis(q, userId, lastEntry) {
-    const msg = `Untuk analisis skenario yang akurat, mohon sebutkan skenario tindakan spesifik(seperti penjualan, perpanjangan, atau manipulasi yang relevan dengan data).Saat ini saya menganalisis simulasi perubahan sederhana saja.`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  async handleStrategicRecommendation(q, userId, configs) {
-    const msg = `Rekomendasi Strategis Data\n\nUntuk perhitungan rekomendasi yang mendalam, saya perlu tahu: \n\n1.Target analisis(tren / anomali terbanyak ?) \n2.Kolom / jenis data yang diprioritaskan\n\nAtau coba beri query seperti: \n - "Lihat data yang paling sering muncul tentang..."\n - "Tampilkan entitas aktif dikelompokkan per departemen"`;
-    this.addToContext(userId, "assistant", msg);
-    return { type: "answer", message: msg };
-  }
-
-  // ================================================================
-  // CONVERSATION HANDLER
-  // ================================================================
-  async handleConversation(q, userId, catalog, lastEntry) {
-    const qLower = q.toLowerCase();
-
-    // Pertanyaan vague tentang aplikasi/db
-    if (qLower.match(/tanya.*tentang|info.*database|apa itu (database|aplikasi ini)/i)) {
-      return `Halo! Saya adalah Asisten Chatbot Ai.Saya dapat membaca dan menganalisis data yang sedang terhubung: ** ${catalog.catalog.map(c => c.displayName).join(', ') || 'Belum ada data'}**.\n\nAnda dapat menanyakan hal - hal spesifik mengenai data di dalamnya(contoh: menampilkan daftar sesuatu, menghitung jumlah data, atau memfilter berdasarkan tanggal).Coba sebutkan pertanyaan seputar data Anda.`;
-    }
-
-    const prompt = `Kamu adalah Asisten Chatbot Ai Profesional yang memiliki "Ingatan Waktu".Kamu dapat mengingat percakapan sebelumnya bahkan dari hari - hari yang lalu.
-    
-Database yang saat ini aktif dan terhubung(sebagai referensi pengetahuanmu):
-${catalog.summary}
-
-${this.buildConversationContext(this.getContext(userId))}
-
-    Pertanyaan / obrolan user saat ini: "${q}"
-
-INSTRUKSI PENTING:
-    1. Hubungkan dengan konteks waktu jika relevan.Jika user bertanya hal yang pernah ditanyakan "kemarin" atau "minggu lalu", akui hal itu(Contoh: "Kemarin Anda menanyakan tentang..., ada lagi yang bisa saya bantu?").
-2. Jika pertanyaan berupa sapaan, WAJIB gunakan kalimat sambutan: "Selamat datang di layanan Asisten Chatbot Ai."
-    3. JANGAN PERNAH menampilkan nama database atau tabel dalam format aslinya yang menggunakan underscore(misalnya "contoh_ini" atau "kekayaan_intelektual").Ubahlah menjadi frasa natural berbahasa Indonesia yang rapi.
-4. Jawablah pertanyaan user dengan ramah dan profesional.
-Gunakan bahasa Indonesia.Maksimal 150 kata.`;
-    return await this.askAI(prompt, 0, 0, 0.7) || "Halo! Ada yang bisa saya bantu dengan data Anda?";
-  }
-
-  // ================================================================
-  // DATABASE CATALOG & SCHEMA
-  // ================================================================
   async getDatabaseCatalog() {
-    const cfgs = dbHelper.getAllActiveConnectionConfigs();
-    const cat = [];
-    for (const cfg of cfgs) {
-      try {
-        if (schemaCache[cfg.database]) {
-          cat.push({
-            name: cfg.database,
-            displayName: this.formatDbName(cfg.database),
-            tables: Object.keys(schemaCache[cfg.database])
-          });
-          continue;
-        }
-        const conn = await mysql.createConnection(cfg);
-        const [tabs] = await conn.execute("SHOW TABLES");
-        const tNames = tabs.map(t => Object.values(t)[0]);
-        cat.push({ name: cfg.database, displayName: this.formatDbName(cfg.database), tables: tNames });
-        await conn.end();
-      } catch (e) { debugLog('CATALOG_ERROR', e.message); }
-    }
-    return {
-      catalog: cat,
-      summary: cat.map(d => `- ${d.displayName} (${d.name}): ${d.tables.join(', ')}`).join('\n')
-    };
+    const profiles = dbProfiler.getProfiles();
+    const cat = Object.keys(profiles).map(db => ({
+      name: db, displayName: formatDbName(db), tables: profiles[db].summary.split(';').map(t => t.match(/\[(.*?)\]/)?.[1]).filter(Boolean)
+    }));
+    return { catalog: cat, summary: JSON.stringify(profiles) };
   }
 
   async ensureSchemaCache(conn, db) {
     if (schemaCache[db]) return;
-    try {
-      const [tabs] = await conn.execute("SHOW TABLES");
-      const sc = {};
-      for (const t of tabs) {
-        const tName = Object.values(t)[0];
-        const [cols] = await conn.execute(`DESCRIBE ${tName} `);
-        let sampleData = [];
-        try {
-          const [rows] = await conn.execute(`SELECT * FROM ${tName} LIMIT 5`);
-          sampleData = rows;
-        } catch (e) { }
-        sc[tName] = {
-          columns: cols.map(c => `${c.Field} (${c.Type})`).join(', '),
-          sample_rows: sampleData
-        };
-      }
-      schemaCache[db] = sc;
-    } catch (e) {
-      console.error(`Schema Error for ${db}: `, e.message);
+    const [tabs] = await conn.execute("SHOW TABLES");
+    schemaCache[db] = {};
+    for (const t of tabs) {
+      const tName = Object.values(t)[0];
+      const [cols] = await conn.execute(`DESCRIBE ${tName}`);
+      const [rows] = await conn.execute(`SELECT * FROM ${tName} LIMIT 3`);
+      schemaCache[db][tName] = { columns: cols.map(c => c.Field).join(', '), sample_rows: rows };
     }
   }
 
-  // ================================================================
-  // CONTEXT MANAGEMENT — lebih kuat, simpan metadata penting
-  // ================================================================
   addToContext(userId, role, content, metadata = null) {
-    // Delegasi ke Context Manager untuk session state tracking
     contextManager.addToContext(userId, role, content, metadata);
   }
 
@@ -3449,163 +279,268 @@ Gunakan bahasa Indonesia.Maksimal 150 kata.`;
     return contextManager.getContext(userId);
   }
 
-  buildConversationContext(history) {
-    const now = new Date();
-    const currentDateTime = now.toLocaleString('id-ID', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-
-    const prefix = `Waktu Sekarang: ${currentDateTime}\n\n`;
-
-    if (!history || !history.length) return prefix + "Percakapan baru.";
-
-    // Ambil 6 entry terakhir (Sliding Window Context) untuk mencegah Token Bloat
-    const relevant = history.slice(-6).map(h => {
-      const role = h.role === "user" ? "User" : "Asisten";
-      const content = h.content?.slice(0, 250) || '';
-      const timeLabel = h.timestamp ? ` (${this.getRelativeTime(h.timestamp)})` : '';
-
-      // Include important metadata for context
-      let contextInfo = `${role}${timeLabel}: ${content}`;
-
-      if (h.lastSqlQuery) {
-        contextInfo += `\n[SQL: ${h.lastSqlQuery.slice(0, 100)}...]`;
+  getApiConfigs() {
+    const saved = apiKeysHelper.getEnabledApiKeys();
+    if (saved.length > 0) {
+      return saved.map(k => ({
+        ...k,
+        key: k.apiKey,
+        isGemini: k.provider === 'gemini',
+        isCohere: k.provider === 'cohere',
+        isHF: k.provider === 'huggingface'
+      }));
+    }
+    return [
+      {
+        name: "Gemini", key: process.env.GEMINI_API_KEY,
+        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        isGemini: true
       }
-
-      if (h.lastDatabase) {
-        contextInfo += `\n[Database: ${h.lastDatabase}]`;
-      }
-
-      return contextInfo;
-    });
-
-    return prefix + "Konteks Percakapan Sebelumnya:\n" + relevant.join('\n\n');
+    ].filter(api => !!api.key);
   }
 
-  // ================================================================
-  // AI CALLER — dengan fallback antar provider
-  // ================================================================
   async askAI(prompt, retry = 0, idx = 0, temp = 0.7) {
-    const cfgs = getApiConfigs();
-    if (idx >= cfgs.length) {
+    const configs = this.getApiConfigs();
+    if (!configs || idx >= configs.length) {
       console.error('Semua AI provider gagal');
       return null;
     }
-    const api = cfgs[idx];
-    try {
-      await apiQueue();
-      const TO = 30000;
-      let res;
+    const api = configs[idx];
 
+    try {
+      let res;
       if (api.isGemini) {
         res = await axios.post(api.url, {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: temp }
-        }, { timeout: TO });
-      } else if (api.isCohere) {
-        res = await axios.post(api.url, {
-          message: prompt, model: api.model, temperature: temp
-        }, { timeout: TO, headers: { Authorization: `Bearer ${api.key} ` } });
-      } else if (api.isHF) {
-        res = await axios.post(api.url, {
-          inputs: prompt, parameters: { temperature: temp }
-        }, { timeout: 60000, headers: { Authorization: `Bearer ${api.key} ` } });
+        }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
+        return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
       } else {
         res = await axios.post(api.url, {
           model: api.model,
           messages: [{ role: "user", content: prompt }],
           temperature: temp
-        }, { timeout: TO, headers: { Authorization: `Bearer ${api.key} ` } });
+        }, { headers: { Authorization: `Bearer ${api.key}` }, timeout: 30000 });
+        return res.data?.choices?.[0]?.message?.content || null;
       }
-
-      let text;
-      if (api.isGemini) text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      else if (api.isCohere) text = res.data?.text;
-      else if (api.isHF) text = res.data?.[0]?.generated_text || res.data?.generated_text;
-      else text = res.data?.choices?.[0]?.message?.content;
-
-      const clean = text?.trim() || null;
-      debugLog(`AI_SUCCESS[${api.name}]`, clean?.slice(0, 100));
-      return clean;
-
     } catch (e) {
       debugLog(`AI_ERROR[${api.name}]`, e.message);
-      // Retry sekali untuk timeout/503
-      if (retry < 1 && (e.code === 'ECONNABORTED' || e.response?.status === 503)) {
-        return this.askAI(prompt, retry + 1, idx, temp);
-      }
-      // Fallback ke provider berikutnya
+      if (retry < 1) return this.askAI(prompt, retry + 1, idx, temp);
       return this.askAI(prompt, 0, idx + 1, temp);
     }
   }
 
-  // ================================================================
-  // STRIP PROMPT LEAK — Hapus meta-instruksi AI dari response
-  // ================================================================
   stripPromptLeak(text) {
-    if (!text || typeof text !== 'string') return text;
-    return text
-      // Hapus kalimat pembuka yang mengulang instruksi prompt (lebih fleksibel)
-      .replace(/^(Di|Ke)beri(kan)?\s+penjelasan\s+SINGKAT\s+yang\s+memenuhi\s+kebijakan\s*:\s*(["']?)/gi, '')
-      .replace(/^(Berikut adalah|Berikut ini|Ini adalah|Tentu,?\s*berikut|Tentu saja)[^.:\n]{0,80}(instruksi|user|pengguna|prompt)[^.:\n]*[.:]\s*/gi, '')
-      .replace(/^(Berikut adalah|Berikut ini)\s*(paragraf|jawaban|respons?|penjelasan|pembuka|ringkasan)[^.:\n]*[.:]\s*/gi, '')
-      // Hapus "Sebagai Asisten AI..." di awal
-      .replace(/^(Sebagai|Saya sebagai|Saya adalah)\s*(Asisten|AI|Bot|ChatBot)[^.]*\.\s*/gi, '')
-      // Hapus "Kamu adalah..." yang leak
-      .replace(/^(Kamu adalah|You are)\s*[^.]*\.\s*/gi, '')
-      // Hapus "Berikut penjelasannya:"
-      .replace(/^(Berikut|Ini)\s+(adalah\s+)?(penjelasan|kalimat\s+pembuka)(nya)?\s*:\s*/gi, '')
-      // Hapus instruksi yang terulang
-      .replace(/^\s*(INSTRUKSI|TUGAS|CATATAN|NOTE|PENTING|KEBIJAKAN):\s*[^\n]*\n/gi, '')
-      .trim();
+    if (!text || typeof text !== 'string') return text || '';
+    return text.replace(/^(Berikut adalah|Tentu|Silakan).*?:\s*/gi, '').trim();
   }
 
-  // ================================================================
-  // UTILITIES
-  // ================================================================
-  cleanSQLQuery(sql) {
-    if (!sql) return null;
-    // Hapus markdown tags seperti ```sql, ```, dan trailing backtracks
-    let clean = sql.replace(/```[a-zA-Z]*\s*/g, '').replace(/```/g, '').trim();
-
-    // Ambil hanya bagian SELECT
-    const match = clean.match(/(SELECT|WITH)\s+[\s\S]+/i);
-    if (!match) return null;
-    return match[0].split(';')[0].trim();
+  isCountResult(data) {
+    if (!data || data.length !== 1) return false;
+    const keys = Object.keys(data[0]);
+    return keys.some(k => ['total', 'jumlah', 'count'].includes(k.toLowerCase()));
   }
 
-  isSafeSQL(sql) {
-    if (!sql) return false;
-    const l = sql.toLowerCase().trim();
-    return l.startsWith('select') &&
-      !l.match(/\b(update|delete|drop|insert|alter|truncate|create|grant|revoke)\b/i);
+  isGroupByResult(data) {
+    if (!data || data.length < 1) return false;
+    const keys = Object.keys(data[0]);
+    return keys.length === 2 && keys.some(k => ['total', 'jumlah', 'count'].includes(k.toLowerCase()));
   }
 
-  formatDbName(db) {
-    return db.replace(/_db$/, '').split('_')
-      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+  async handleDatabaseList(userId) {
+    const { catalog } = await this.getDatabaseCatalog();
+    const msg = "Tentu! Saat ini saya memiliki akses ke data berikut:\n\n" +
+      catalog.map(c => `- **${c.displayName}**`).join('\n') +
+      "\n\nAda yang ingin Mas/Mbak cari dari daftar tersebut? Saya bisa membantu mencari detail anggota, status kehadiran, atau data kekayaan intelektual lainnya. 😊";
+    return { type: "answer", message: msg };
   }
 
-  parseJSON(text) {
-    if (!text) return null;
+  async generateSmartRecommendations(q, cat, context) {
     try {
-      const match = text.match(/\{[\s\S]*?\}/);
-      return match ? JSON.parse(match[0]) : null;
-    } catch (e) { return null; }
+      const history = context?.conversationHistory || [];
+      const prompt = `Berdasarkan database yang tersedia dan percakapan terakhir, berikan 3 pertanyaan singkat (maks 6 kata) yang relevan untuk ditanyakan oleh user.
+      
+DATA DATABASE:
+${cat.summary || 'Kekayaan Intelektual, Anggota Ujicoba'}
+
+PERCAKAPAN TERAKHIR:
+User bertanya: "${q}"
+
+INSTRUKSI:
+1. Jawab HANYA list 1, 2, 3 saja. 
+2. Pastikan pertanyaan nyata (bisa dijawab SQL).
+3. Buat variatif (misal 1 tentang jumlah, 1 tentang filtering, 1 tentang pencarian nama).
+
+Jawab sekarang:`;
+
+      const aiRes = await this.askAI(prompt, 0, 0, 0.7);
+      if (aiRes) return aiRes.trim();
+
+      // Fallback tetap aman
+      return "1. Apa saja jenis KI yang tersedia?\n2. Siapa inventor dari FTI?\n3. Berapa total pendaftaran tahun 2024?";
+    } catch (e) {
+      return "1. Apa saja hobi anggota?\n2. Kapan pendaftaran terbaru?\n3. Berapa total data?";
+    }
   }
 
-  // Legacy methods untuk backward compatibility
-  async handleDatabaseSelection(q, db, all) {
-    const sel = all.find(r => r.database === db);
-    if (!sel) return { type: "error", message: "Database tidak ditemukan." };
-    const formatted = await this.formatResponse(q, sel.data, db, 0, sel.total);
-    return { type: "answer", message: formatted, source: db, data: sel.data };
+  async handlePagination(userId, lastEntry, progressCallback, isReset) {
+    if (!lastEntry || !lastEntry.lastSqlQuery) return { type: "answer", message: "Maaf, tidak ada riwayat pencarian yang bisa dipagination." };
+
+    const newOffset = isReset ? 0 : (lastEntry.lastOffset || 0) + 10;
+    if (!isReset && newOffset >= lastEntry.lastTotal) return { type: "answer", message: "Anda sudah mencapai akhir data." };
+
+    const paginatedSql = lastEntry.lastSqlQuery.replace(/LIMIT \d+ OFFSET \d+/i, '').trim() + ` LIMIT 10 OFFSET ${newOffset}`;
+
+    if (progressCallback) progressCallback('Memuat data berikutnya...');
+    const retrieval = await ragPipeline.retrieve(paginatedSql, lastEntry.lastDatabase);
+    const naturalResponse = await ragPipeline.generate(lastEntry.lastQuestion, retrieval.data, retrieval.total, lastEntry.lastDatabase, lastEntry);
+
+    const finalMsg = this.stripPromptLeak(naturalResponse);
+    this.addToContext(userId, "assistant", finalMsg, {
+      ...lastEntry,
+      lastOffset: newOffset,
+      lastData: retrieval.data
+    });
+    return { type: "answer", message: finalMsg, data: retrieval.data };
   }
 
-  async handleConfirmation(q, action, host = null) {
-    return await this.processMessage(`${action} ${q} `, "default", null, host);
+  async handleSelectionMode(q, userId, lastEntry, progressCallback) {
+    const match = q.match(/\b(\d+)\b/);
+    if (!match || !lastEntry || !lastEntry.lastData) return null;
+
+    const idx = parseInt(match[1]) - 1;
+    const item = lastEntry.lastData[idx];
+    if (!item) return null;
+
+    if (progressCallback) progressCallback('Menyiapkan detail data lengkap...');
+
+    let detailMsg = `Tentu saja, Mas/Mbak! Berikut adalah detail lengkap untuk data nomor **${match[1]}**:\n\n`;
+
+    detailMsg += Object.entries(item)
+      .filter(([k]) => !['database', 'id', 'lastDatabase', 'originalQuestion'].includes(k))
+      .map(([k, v]) => {
+        const fieldName = k.replace(/_/g, ' ').toUpperCase();
+        return `🔹 **${fieldName}**:\n${v || '-'}`;
+      })
+      .join('\n\n');
+
+    detailMsg += `\n\nAda lagi detail yang ingin Mas/Mbak tanyakan?`;
+
+    this.addToContext(userId, "user", q);
+    this.addToContext(userId, "assistant", detailMsg);
+    return { type: "answer", message: detailMsg };
+  }
+
+  // ================================================================
+  // EXPORT & VISUAL SERVICE HANDLERS (Migrated from V6)
+  // ================================================================
+  async generateChartResponse(data, originalQuestion, userId, host = null) {
+    try {
+      if (!data || data.length === 0) return { type: "answer", message: "Maaf, tidak ada data untuk dibuat grafik." };
+      const valCol = Object.keys(data[0]).find(k => ['total', 'jumlah', 'count', 'rata', 'sum'].includes(k.toLowerCase()));
+      const keyCol = Object.keys(data[0]).find(k => k !== valCol);
+      if (!keyCol || !valCol) return { type: "answer", message: "Data ini tidak cocok untuk grafik otomatis (butuh angka rekap)." };
+
+      const chartData = data.slice(0, 15);
+      const labels = chartData.map(r => String(r[keyCol] || '-').substring(0, 20));
+      const values = chartData.map(r => Number(r[valCol]) || 0);
+
+      const chartConfig = {
+        type: labels.length <= 5 ? 'pie' : 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ label: valCol.toUpperCase(), data: values, backgroundColor: ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899'] }]
+        },
+        options: { plugins: { title: { display: true, text: `Grafik: ${originalQuestion.substring(0, 50)}` } } }
+      };
+
+      const chartUrl = `https://quickchart.io/chart?v=3&c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=800&h=500&bkg=white`;
+
+      let baseUrl = this._getBaseUrl(host);
+      const msg = `Tentu, berikut grafiknya: \n\n![Grafik](${chartUrl})\n\nSemoga membantu!`;
+
+      this.addToContext(userId, "assistant", msg);
+      return { type: "answer", message: msg };
+    } catch (e) {
+      return { type: "answer", message: "Gagal membuat grafik: " + e.message };
+    }
+  }
+
+  async generateExportResponse(data, originalQuestion, userId, host = null) {
+    try {
+      if (!data || data.length === 0) return null;
+      const XLSX = require('xlsx');
+      const fs = require('fs');
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+      const cleanData = data.map(row => {
+        const newRow = {};
+        for (const [k, v] of Object.entries(row)) {
+          newRow[k] = (v && typeof v === 'string') ? v.replace(/<br\s*\/?>/gi, ', ').replace(/<[^>]+>/g, '') : v;
+        }
+        return newRow;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(cleanData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data KI");
+      const filename = `Data_KI_${Date.now()}.xlsx`;
+      const filepath = path.join(uploadDir, filename);
+      XLSX.writeFile(wb, filepath);
+
+      let baseUrl = this._getBaseUrl(host);
+      const downloadPath = `${baseUrl}/api/download/${filename}`;
+      const msg = `Data berhasil disiapkan! 📥\n\n🔗 **[DOWNLOAD DATA EXCEL](${downloadPath})**`;
+
+      this.addToContext(userId, "assistant", msg);
+      return { type: "answer", message: msg };
+    } catch (e) {
+      return { type: "answer", message: "Gagal export Excel: " + e.message };
+    }
+  }
+
+  async generatePDFResponse(data, originalQuestion, userId, host = null) {
+    try {
+      const PDFDocument = require('pdfkit-table');
+      const fs = require('fs');
+      const uploadDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+      const filename = `Laporan_KI_${Date.now()}.pdf`;
+      const filepath = path.join(uploadDir, filename);
+      const doc = new PDFDocument({ margin: 30, size: 'A4' });
+      doc.pipe(fs.createWriteStream(filepath));
+
+      doc.fontSize(18).text('LAPORAN DATA KEKAYAAN INTELEKTUAL', { align: 'center' });
+      doc.fontSize(10).text(`Topik: ${originalQuestion}`, { align: 'center' });
+      doc.moveDown();
+
+      const table = {
+        headers: Object.keys(data[0]).slice(0, 6).map(k => k.toUpperCase()),
+        rows: data.slice(0, 30).map(row => Object.values(row).slice(0, 6).map(v => String(v).substring(0, 50)))
+      };
+      await doc.table(table);
+      doc.end();
+
+      let baseUrl = this._getBaseUrl(host);
+      const downloadPath = `${baseUrl}/api/download/${filename}`;
+      return { type: "answer", message: `Laporan PDF berhasil disusun! 📄\n\n🔗 **[UNDUH LAPORAN PDF](${downloadPath})**` };
+    } catch (e) {
+      return { type: "answer", message: "Gagal menyusun PDF: " + e.message };
+    }
+  }
+
+  async generateDashboardResponse(data, originalQuestion, userId, host = null) {
+    try {
+      const dashboardService = require('./services/dashboard-service');
+      const dashboardId = dashboardService.saveDashboard(data, `Dashboard: ${originalQuestion}`);
+      let baseUrl = this._getBaseUrl(host);
+      const dashboardLink = `${baseUrl}/dashboard/index.html?id=${dashboardId}`;
+      return { type: "answer", message: `Dashboard Visual Interaktif berhasil dibuat! 📊\n\n🔗 **[BUKA DASHBOARD](${dashboardLink})**` };
+    } catch (e) {
+      return { type: "answer", message: "Gagal membuat dashboard: " + e.message };
+    }
   }
 }
 

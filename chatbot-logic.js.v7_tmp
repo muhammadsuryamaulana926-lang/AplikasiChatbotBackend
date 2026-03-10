@@ -1,0 +1,189 @@
+const axios = require("axios");
+const mysql = require("mysql2/promise");
+const path = require("path");
+const dbHelper = require("./db-helper");
+const natural = require("natural");
+const apiKeysHelper = require("./api-keys-helper");
+const intentClassifier = require('./core/intent-classifier');
+const { INTENT_TYPES } = require('./core/constants');
+const sqlGenerator = require('./core/sql-generator');
+const contextManager = require('./core/context-manager');
+const responseFormatter = require('./core/response-formatter');
+const errorMemory = require('./core/error-memory');
+const learningV2 = require('./learning-system-v2');
+const adaptiveLearner = require('./core/adaptive-learner');
+const semanticNormalizer = require('./preprocessors/semantic-normalizer');
+const responseScorer = require('./core/response-scorer');
+const aiOrchestrator = require('./core/ai-orchestrator');
+const databaseRouter = require('./core/database-router');
+const dbProfiler = require('./core/db-profiler');
+const ragPipeline = require('./core/rag-pipeline');
+
+let schemaCache = {};
+let longTermHistoryFetched = new Set();
+
+const {
+  formatDate,
+  formatNumber,
+  stripEmoji,
+  formatSnakeCaseValue,
+  formatInventorList,
+  formatDbName
+} = require('./utils/formatters');
+
+function debugLog(label, content) {
+  try {
+    const fs = require('fs');
+    fs.appendFileSync(
+      path.join(__dirname, 'debug_sql_out.txt'),
+      `\n[${new Date().toISOString()}] ${label}: ${typeof content === 'object' ? JSON.stringify(content) : content}`
+    );
+  } catch (e) { }
+}
+
+class ChatbotHandler {
+  constructor() {
+    this.dbConfig = dbHelper.getDbConfig();
+    this.initPhase7();
+  }
+
+  async initPhase7() {
+    databaseRouter.setAIHandler(this.askAI.bind(this));
+    const allConfigs = dbHelper.getAllActiveConnectionConfigs();
+    dbProfiler.profileDatabases(allConfigs).then(() => {
+      console.log('🚀 Phase 7: AI-First Agent is ready.');
+    });
+
+    ragPipeline.init({
+      askAI: this.askAI.bind(this),
+      schemaCache: schemaCache,
+      ensureSchemaCache: this.ensureSchemaCache.bind(this)
+    });
+  }
+
+  async processMessage(question, userId = "default", progressCallback = null, host = null) {
+    try {
+      await this.syncHistoryFromDB(userId);
+      const result = await this._processMessageCore(question, userId, progressCallback, host);
+
+      if (result && result.type === 'answer' && typeof result.message === 'string') {
+        const session = contextManager.getSession(userId);
+        const lastEntry = session.getLastEntry();
+
+        if (!result.message.includes('💡 **Rekomendasi Pertanyaan:**')) {
+          const qTrim = question.trim().toLowerCase();
+          const closingKeywords = /\b(cukup|sudah|oke|ok|sip|siap|makasih|terimakasih|thanks|thx|terima kasih|selesai|udahan|bye|dah|sampai jumpa)\b/i;
+          const isClosing = (qTrim.length < 30 && closingKeywords.test(qTrim)) || session._semanticMeta?.isClosing === true;
+
+          if (!isClosing) {
+            const cat = await this.getDatabaseCatalog();
+            let recs = await this.generateSmartRecommendations(question, cat, this.getContext(userId));
+            const hasManyData = (result.data && result.data.length > 1) || (lastEntry && lastEntry.lastData && lastEntry.lastData.length > 1);
+
+            if (hasManyData && !this.isCountResult(result.data || [])) {
+              recs += `\n\n📊 **Tip:** Apakah kamu mau menampilkan grafiknya, membuka dashboard, atau mengunduh datanya (Excel atau PDF)?`;
+            }
+
+            const appendedText = '\n\n💡 **Rekomendasi Pertanyaan:**\n' + recs;
+            result.message = result.message.trim() + appendedText;
+          }
+        }
+      }
+      return result;
+    } catch (err) {
+      console.error('Chatbot Error:', err);
+      return { type: "answer", message: `Maaf, terjadi kesalahan teknis: ${err.message}.` };
+    }
+  }
+
+  async _processMessageCore(question, userId, progressCallback, host = null) {
+    let q = question.trim();
+    if (!q) return { type: "answer", message: "Pertanyaan tidak boleh kosong." };
+    const startTime = Date.now();
+
+    const session = contextManager.getSession(userId);
+    const context = session.conversationHistory;
+    const lastEntry = session.getLastEntry();
+    
+    // ════════════════════════════════════════════════════════════════
+    // STEP 1: AI-FIRST UNDERSTANDING (The Heart of Phase 7)
+    // ════════════════════════════════════════════════════════════════
+    if (progressCallback) progressCallback('Memahami maksud Anda...');
+    const contextStr = this.buildConversationContext(context);
+    const understanding = await ragPipeline.understand(q, contextStr, lastEntry);
+    debugLog('AI_UNDERSTANDING', understanding);
+
+    if (!understanding) return { type: "answer", message: "Maaf, saya gagal memahami pertanyaan Anda." };
+
+    // 1. Handle CONVERSATION & AMBIGUOUS
+    if (understanding.intent === 'CONVERSATION' || understanding.intent === 'AMBIGUOUS') {
+      const msg = understanding.natural_response || "Ada yang bisa saya bantu? 😊";
+      this.addToContext(userId, "user", q);
+      this.addToContext(userId, "assistant", msg);
+      return { type: "answer", message: msg };
+    }
+
+    // 2. Handle COMMAND (Export, Chart, Dashboard, Pagination)
+    if (understanding.intent === 'COMMAND') {
+      debugLog('AI_COMMAND_TRIGGERED', understanding.action);
+      
+      switch (understanding.action) {
+        case 'EXPORT_PDF':
+          if (lastEntry?.lastData) return await this.generatePDFResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'EXPORT_EXCEL':
+          if (lastEntry?.lastData) return await this.generateExportResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'GENERATE_CHART':
+          if (lastEntry?.lastData) return await this.generateChartResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'OPEN_DASHBOARD':
+          if (lastEntry?.lastData) return await this.generateDashboardResponse(lastEntry.lastData, lastEntry.lastQuestion, userId, host);
+          break;
+        case 'PAGINATE_NEXT':
+          return await this.handlePagination(userId, lastEntry, progressCallback, false);
+        case 'PAGINATE_RESET':
+          return await this.handlePagination(userId, lastEntry, progressCallback, true);
+        case 'DATABASE_LIST':
+          return await this.handleDatabaseList(userId);
+      }
+      
+      // If command fails because of missing data
+      const noDataMsg = `Maaf, saya butuh data hasil pencarian sebelum bisa menjalankan perintah tersebut. Silakan cari data dulu ya!`;
+      return { type: "answer", message: noDataMsg };
+    }
+
+    // 3. Handle DATABASE_QUERY
+    if (understanding.intent === 'DATABASE_QUERY' && understanding.sql) {
+      const targetDb = understanding.targetDb || lastEntry?.lastDatabase;
+      if (!targetDb) return await this.handleDatabaseList(userId);
+
+      if (progressCallback) progressCallback('Mengambil data...');
+      const retrieval = await ragPipeline.retrieve(understanding.sql, targetDb);
+      
+      if (retrieval.error) {
+        // AI failed SQL, fallback once to legacy logic just in case
+        return await this.handleDatabaseQuery(q, userId, await this.getDatabaseCatalog(), lastEntry, progressCallback);
+      }
+
+      if (progressCallback) progressCallback('Menyusun jawaban...');
+      const naturalResponse = await ragPipeline.generate(q, retrieval.data, retrieval.total, targetDb, lastEntry);
+      
+      const finalMsg = this.stripPromptLeak(naturalResponse);
+      this.addToContext(userId, "user", q);
+      this.addToContext(userId, "assistant", finalMsg, {
+        lastDatabase: targetDb, lastQuestion: q, originalQuestion: q,
+        lastOffset: 0, lastTotal: retrieval.total, lastSqlQuery: understanding.sql,
+        lastData: retrieval.data, lastDataIsGroup: this.isGroupByResult(retrieval.data)
+      });
+
+      return { type: "answer", message: finalMsg, data: retrieval.data };
+    }
+
+    // Ultimate fallback
+    return { type: "answer", message: "Maaf, saya bingung. Coba tanya dengan kalimat lain ya!" };
+  }
+
+  // --- REST OF THE METHODS (PLACEHOLDERS FOR WRITE_TO_FILE, I will append/replace as needed) ---
+  // ... (I will keep existing methods from the previous version below line 150)
+}

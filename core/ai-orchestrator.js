@@ -19,7 +19,7 @@ class AIOrchestrator {
             PAGINATE_NEXT: /^(lagi|lanjut(kan)?|berikutnya|next|more|tampilkan lagi|lihat lagi|selanjutnya|mau lagi|mana lagi)\b/i,
             PAGINATE_RESET: /^(awal|dari awal|ulang|reset|kembali|data (pertama|awal)|tampilkan (lagi )?(data )?(1|pertama)|dari (data )?1)\b/i,
             PAGINATE_RANGE: /(?:data|tampilkan|lihat)\s*(?:yang\s+)?(?:ke\s+)?(\d+)\s*(?:sampai|hingga|-|sd|s\/d)\s*(\d+)/i,
-            DATABASE_LIST: /database\s+(apa|mana)\s*(saja|aja)?|ada\s+database|list.*database/i,
+            DATABASE_LIST: /database\s+(apa|mana)\s*(saja|aja)?|ada\s+(berapa\s+)?database|list.*database|database.*aktif|database.*tersedia|db\s+(apa|mana|aktif)|ada\s+db\s+apa/i,
             SELECT_NUMBER: /^(?:detail\s+)?(\d+)$|^(?:no\.?\s*|nomor\s*)(\d+)$/i,
         };
 
@@ -29,8 +29,8 @@ class AIOrchestrator {
         // Perintah grafik/export — tetap regex karena 100% pasti
         this.CHART_CMD = /\b(grafik(?:nya)?|diagram(?:nya)?|chart(?:nya)?|buatkan\s+grafik|bikin\s+grafik|tampilkan\s+grafik|buat\s+grafik|bikin\s+diagram|buatkan\s+diagram|jadikan\s+(?:grafik|grafil|gravis|grafic|graph))\b/i;
         this.EXPORT_CMD = /\b(export|unduh|download|csv|excel|ekspor|exel|xls|xlsx|jadikan\s+(?:exel|excel|escel|eksel|xs|xsl|xlsx))\b/i;
-        this.EXPORT_PDF_CMD = /\b(pdf|buatkan\s+pdf|export\s+pdf|download\s+pdf|bikin\s+pdf|cetak\s+pdf|unduh\s+pdf)\b/i;
-        this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|visualisasi\s+interaktif|buka\s+dashboard|buatkan\s+dashboard|tampilkan\s+dashboard)\b/i;
+        this.EXPORT_PDF_CMD = /\b(pdf|pdh|pfd|buatkan\s+pdf|export\s+pdf|download\s+pdf|bikin\s+pdf|cetak\s+pdf|unduh\s+pdf|jadikan\s+(?:pdf|pdh|pfd)|jadiin\s+(?:pdf|pdh|pfd))\b/i;
+        this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|dashbod(?:nya)?|desbor[dt]?(?:nya)?|visualisasi\s+interaktif|buka\s+(?:dashboard|dashbod|desbor[dt]?)|buatkan\s+(?:dashboard|dashbod|desbor[dt]?)|tampilkan\s+(?:dashboard|dashbod|desbor[dt]?))\b/i;
 
         // Sapaan murni — cepat tanpa AI
         this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey)$/i;
