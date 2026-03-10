@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database files
+*.sqlite
+*.db
+
+# Uploads
+uploads/
+
+# Cache and temporary files
+*.cache
+.DS_Store
+*.tmp
+
+# JSON data files (optional - uncomment if you want to exclude)
+# query-patterns.json
+# adaptive-learning-data.json
+# error-memory-data.json
+# query-cache-data.json
+# learning-data.json
+# learning-data-v2.json
+
+# Debug files
+debug_*.txt
+trace_*.txt
+*.txt
+
+# Test files output
+test_output.txt
+final_test_report.txt
+
+# IDE
+.vscode/
+.idea/

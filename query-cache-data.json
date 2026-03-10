@@ -1,0 +1,119 @@
+{
+  "cache": [
+    [
+      "tampilkan daftar ki yang ada",
+      {
+        "sql": "SELECT id_ki, jenis_ki, judul FROM kekayaan_intelektual LIMIT 10 OFFSET 0",
+        "database": "itb_db",
+        "total": 1353,
+        "originalQuestion": "Tampilkan daftar KI yang ada",
+        "timestamp": 1773021890624,
+        "hitCount": 0
+      }
+    ],
+    [
+      "berapa berapa ki pada tahun 2025",
+      {
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2025%'",
+        "database": "itb_db",
+        "total": 30,
+        "originalQuestion": "Berapa jumlah KI pada tahun 2025",
+        "timestamp": 1773021929387,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data kekayaan intelektual yang terkait dengan motor",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE judul LIKE '%motor%' LIMIT 10 OFFSET 0",
+        "database": "itb_db",
+        "total": 15,
+        "originalQuestion": "Tampilkan data Kekayaan Intelektual yang terkait dengan motor",
+        "timestamp": 1773022072352,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan daftar kekayaan intelektual yang terkait dengan inventor bismo",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Bismo%' LIMIT 10 OFFSET 0",
+        "database": "itb_db",
+        "total": 28,
+        "originalQuestion": "Tampilkan daftar Kekayaan Intelektual yang terkait dengan inventor Bismo",
+        "timestamp": 1773022249320,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan berapa ki dari pak bismo per tahun",
+      {
+        "sql": "SELECT YEAR(tgl_pendaftaran) AS tahun, COUNT(*) AS total FROM kekayaan_intelektual WHERE inventor LIKE '%Bismo%' GROUP BY YEAR(tgl_pendaftaran) ORDER BY tahun ASC LIMIT 10",
+        "database": "itb_db",
+        "total": 7,
+        "originalQuestion": "Tampilkan jumlah KI dari pak Bismo per tahun",
+        "timestamp": 1773022394495,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan status dokumen ki dengan nomor permohonan a00202000194",
+      {
+        "sql": "SELECT status_dokumen FROM kekayaan_intelektual WHERE no_permohonan = 'A00202000194' LIMIT 10",
+        "database": "itb_db",
+        "total": 1,
+        "originalQuestion": "Tampilkan status dokumen KI dengan nomor permohonan A00202000194",
+        "timestamp": 1773022521371,
+        "hitCount": 0
+      }
+    ],
+    [
+      "siapa inventor ki dengan nomor permohonan a00202000194",
+      {
+        "sql": "SELECT inventor FROM kekayaan_intelektual WHERE no_permohonan = 'A00202000194' LIMIT 10",
+        "database": "itb_db",
+        "total": 1,
+        "originalQuestion": "Siapa inventor KI dengan nomor permohonan A00202000194",
+        "timestamp": 1773022545666,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan daftar ki",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual LIMIT 10",
+        "database": "itb_db",
+        "total": 1353,
+        "originalQuestion": "tampilkan daftar ki",
+        "timestamp": 1773026930645,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan daftar ki yang terdaftar pada tahun 2025",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE tgl_pendaftaran LIKE '%2025%' LIMIT 10",
+        "database": "itb_db",
+        "total": 30,
+        "originalQuestion": "tampilkan daftar ki yang terdaftar pada tahun 2025",
+        "timestamp": 1773027003182,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data kekayaan intelektual yang mengenai motor",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE judul LIKE '%motor%' LIMIT 10",
+        "database": "itb_db",
+        "total": 15,
+        "originalQuestion": "tampilkan data Kekayaan Intelektual yang mengenai motor",
+        "timestamp": 1773027053823,
+        "hitCount": 0
+      }
+    ]
+  ],
+  "stats": {
+    "hits": 0,
+    "misses": 19
+  },
+  "lastSaved": 1773027053824
+}

@@ -1,0 +1,26 @@
+{
+  "status": "success",
+  "message": "Permintaan berhasil diproses",
+  "data": [
+    {
+      "id_ki": "1",
+      "jenis_ki": "Paten",
+      "judul": "Pembuatan Pupuk Kompos yang berasal dari ampas fermentasi kopi",
+      "tkt": "1",
+      "status_ki": "Ajuan Paten",
+      "tgl_pendaftaran": "2020-08-24",
+      "no_permohonan": "P00000000001",
+      "tgl_sertifikasi": null,
+      "id_sertifikat": null,
+      "status_dokumen": "perbaikan_substantif_diterima",
+      "inventor": "Ahmad (SITH - Dosen - 12345667890),Bayu (SITH - Alumni - 2345678901),Rachman (SITH - Dosen - 3456789012)",
+      "fakultas_inventor": "SITH, SITH, SITH",
+      "pekerjaan_inventor": "Dosen, Alumni, Dosen",
+      "nama_instansi_inventor": "Institut Teknologi Bandung, Institut Teknologi Bandung, Institut Teknologi Bandung",
+      "mitra_kepemilikan": "Institut Teknologi Bandung"
+    }
+  ],
+  "meta": {
+    "jumlah": 1
+  }
+}

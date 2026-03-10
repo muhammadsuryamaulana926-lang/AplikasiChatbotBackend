@@ -1,0 +1,303 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AI LEARNING SYSTEM — Belajar dari Setiap Pertanyaan User
+// Data disimpan di learning-data.json agar survive restart server
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const fs = require("fs");
+const path = require("path");
+
+const LEARNING_FILE = path.join(__dirname, "learning-data.json");
+
+// Default structure
+const DEFAULT_DATA = {
+    totalQueries: 0,
+    topicFrequency: {}, // { "anggota": 45, "kegiatan": 30, ... }
+    databaseUsage: {}, // { "nangka_busuk_db": 80, "sate_madura_db": 40 }
+    queryPatterns: {}, // { "list": 50, "detail": 30, "count": 10 }
+    popularQuestions: [], // [{ question, count, lastAsked }]
+    userInsights: [], // AI-generated insights
+    hourlyActivity: {}, // { "09": 15, "10": 22, ... }
+    lastUpdated: null,
+    createdAt: new Date().toISOString(),
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LOAD & SAVE
+// ═══════════════════════════════════════════════════════════════
+function loadLearningData() {
+    try {
+        if (fs.existsSync(LEARNING_FILE)) {
+            const raw = fs.readFileSync(LEARNING_FILE, "utf8");
+            return JSON.parse(raw);
+        }
+    } catch (err) {
+        console.error("⚠️ Learning data corrupted, resetting:", err.message);
+    }
+    return { ...DEFAULT_DATA };
+}
+
+function saveLearningData(data) {
+    try {
+        data.lastUpdated = new Date().toISOString();
+        fs.writeFileSync(LEARNING_FILE, JSON.stringify(data, null, 2), "utf8");
+    } catch (err) {
+        console.error("❌ Failed to save learning data:", err.message);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECORD — Catat setiap interaksi
+// ═══════════════════════════════════════════════════════════════
+function recordQuery(question, metadata = {}) {
+    const data = loadLearningData();
+    const { database, queryType, topics, success } = metadata;
+
+    // 1. Total queries
+    data.totalQueries++;
+
+    // 2. Topic frequency
+    if (topics && Array.isArray(topics)) {
+        for (const topic of topics) {
+            const t = topic.toLowerCase();
+            data.topicFrequency[t] = (data.topicFrequency[t] || 0) + 1;
+        }
+    }
+
+    // 3. Database usage
+    if (database) {
+        data.databaseUsage[database] =
+            (data.databaseUsage[database] || 0) + 1;
+    }
+
+    // 4. Query pattern
+    if (queryType) {
+        data.queryPatterns[queryType] =
+            (data.queryPatterns[queryType] || 0) + 1;
+    }
+
+    // 5. Popular questions (simplified - group similar questions)
+    const simplified = simplifyQuestion(question);
+    const existing = data.popularQuestions.find(
+        (q) => q.simplified === simplified,
+    );
+    if (existing) {
+        existing.count++;
+        existing.lastAsked = new Date().toISOString();
+        if (existing.variations.length < 5) {
+            existing.variations.push(question);
+        }
+    } else {
+        data.popularQuestions.push({
+            simplified,
+            question,
+            variations: [question],
+            count: 1,
+            lastAsked: new Date().toISOString(),
+        });
+    }
+
+    // Keep only top 50 popular questions
+    data.popularQuestions.sort((a, b) => b.count - a.count);
+    data.popularQuestions = data.popularQuestions.slice(0, 50);
+
+    // 6. Hourly activity
+    const hour = new Date().getHours().toString().padStart(2, "0");
+    data.hourlyActivity[hour] = (data.hourlyActivity[hour] || 0) + 1;
+
+    saveLearningData(data);
+
+    console.log(
+        `📚 Learning: Query #${data.totalQueries} recorded | Topics: ${topics?.join(", ") || "-"} | DB: ${database || "-"}`,
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANALYZE — Dapatkan insight dari data yang sudah dikumpulkan
+// ═══════════════════════════════════════════════════════════════
+function getInsights() {
+    const data = loadLearningData();
+
+    if (data.totalQueries < 3) {
+        return null; // Belum cukup data
+    }
+
+    const insights = {};
+
+    // Top topics
+    const sortedTopics = Object.entries(data.topicFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    insights.topTopics = sortedTopics;
+
+    // Most used database
+    const sortedDbs = Object.entries(data.databaseUsage)
+        .sort((a, b) => b[1] - a[1]);
+    insights.topDatabases = sortedDbs;
+
+    // Most common query type
+    const sortedPatterns = Object.entries(data.queryPatterns)
+        .sort((a, b) => b[1] - a[1]);
+    insights.topPatterns = sortedPatterns;
+
+    // Peak hours
+    const sortedHours = Object.entries(data.hourlyActivity)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+    insights.peakHours = sortedHours;
+
+    // Total queries
+    insights.totalQueries = data.totalQueries;
+
+    // Popular questions
+    insights.popularQuestions = data.popularQuestions.slice(0, 5);
+
+    return insights;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD INSIGHT TEXT — Untuk ditampilkan di respon AI
+// ═══════════════════════════════════════════════════════════════
+function buildInsightText() {
+    const insights = getInsights();
+    if (!insights) return null;
+
+    // Hanya tampilkan insight setiap 5 query agar tidak spam
+    if (insights.totalQueries % 5 !== 0) return null;
+
+    let text = "\n\n*Insight:*\n";
+
+    // Top topic insight
+    if (insights.topTopics.length > 0) {
+        const [topTopic, topCount] = insights.topTopics[0];
+        const topicName = topTopic.charAt(0).toUpperCase() + topTopic.slice(1);
+        text += `Topik paling sering ditanyakan: **${topicName}** (${topCount}x)\n`;
+    }
+
+    // Total queries milestone
+    if (insights.totalQueries >= 10 && insights.totalQueries % 10 === 0) {
+        text += `Milestone: Sudah ${insights.totalQueries} pertanyaan dijawab\n`;
+    }
+
+    // Database preference
+    if (insights.topDatabases.length > 1) {
+        const [topDb, topDbCount] = insights.topDatabases[0];
+        const dbName = topDb
+            .replace("_db", "")
+            .replace(/_/g, " ")
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+        text += `Organisasi favorit: **${dbName}**\n`;
+    }
+
+    return text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DETECT TOPICS — Deteksi topik dari pertanyaan (AI-assisted)
+// ═══════════════════════════════════════════════════════════════
+function detectTopics(question) {
+    const q = question.toLowerCase();
+    const topics = [];
+
+    // Broad topic detection — biarkan simple, AI di main flow yang deep analyze
+    const topicMap = {
+        anggota: /anggota|member|peserta|orang|nama/i,
+        kegiatan: /kegiatan|acara|event|agenda|jadwal/i,
+        kehadiran: /kehadiran|absen|hadir|datang/i,
+        keuangan: /keuangan|transaksi|bayar|dana|kas|uang/i,
+        kontak: /telepon|telp|hp|wa|email|ig|instagram|facebook|sosmed|kontak/i,
+        cuaca: /cuaca|weather|suhu|temperatur|kelembaban|angin/i,
+        proyek: /proyek|project|pekerjaan|kerjaan/i,
+    };
+
+    for (const [topic, pattern] of Object.entries(topicMap)) {
+        if (pattern.test(q)) {
+            topics.push(topic);
+        }
+    }
+
+    return topics.length > 0 ? topics : ["umum"];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DETECT QUERY TYPE
+// ═══════════════════════════════════════════════════════════════
+function detectQueryType(question) {
+    const q = question.toLowerCase();
+    if (/berapa|jumlah|total|count/i.test(q)) return "count";
+    if (/daftar|list|semua|tampilkan|data|siapa saja/i.test(q)) return "list";
+    if (/ig |instagram|telepon|email|kontak|wa /i.test(q)) return "detail";
+    if (/terbaru|terakhir|latest|newest/i.test(q)) return "latest";
+    if (/cari|search|dimana|siapa/i.test(q)) return "search";
+    return "general";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET LEARNING CONTEXT — untuk dipasang di prompt AI
+// ═══════════════════════════════════════════════════════════════
+function getLearningContext() {
+    const data = loadLearningData();
+
+    if (data.totalQueries < 5) return "";
+
+    const topTopics = Object.entries(data.topicFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([t, c]) => `${t} (${c}x)`)
+        .join(", ");
+
+    const topDbs = Object.entries(data.databaseUsage)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(
+            ([db, c]) =>
+                `${db.replace("_db", "").replace(/_/g, " ")} (${c}x)`,
+        )
+        .join(", ");
+
+    return `
+KONTEKS LEARNING (dipelajari dari ${data.totalQueries} pertanyaan sebelumnya):
+- Topik populer: ${topTopics || "belum cukup data"}
+- Database favorit: ${topDbs || "belum cukup data"}
+- Gunakan insight ini untuk prioritas dan personalisasi jawaban.
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIMPLIFY QUESTION — untuk grouping pertanyaan mirip
+// ═══════════════════════════════════════════════════════════════
+function simplifyQuestion(question) {
+    return question
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ")
+        .filter((w) => w.length > 2)
+        .sort()
+        .join(" ");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET STATS — untuk endpoint admin / debug
+// ═══════════════════════════════════════════════════════════════
+function getStats() {
+    return loadLearningData();
+}
+
+function resetLearning() {
+    saveLearningData({ ...DEFAULT_DATA });
+    console.log("🔄 Learning data has been reset");
+}
+
+module.exports = {
+    recordQuery,
+    getInsights,
+    buildInsightText,
+    detectTopics,
+    detectQueryType,
+    getLearningContext,
+    getStats,
+    resetLearning,
+};

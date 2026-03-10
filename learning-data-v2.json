@@ -1,0 +1,2293 @@
+{
+  "users": [
+    {
+      "userId": "default",
+      "patterns": [
+        [
+          "bahasanya indonesia ya_Cuaca",
+          {
+            "query": "bahasanya indonesia ya",
+            "database": "Cuaca",
+            "intent": {
+              "isDatabaseQuery": false,
+              "queryType": "other",
+              "targetEntity": "other",
+              "keywords": [
+                "bahasanya",
+                "indonesia"
+              ],
+              "specificField": null,
+              "isFollowUp": true,
+              "wantLatest": false,
+              "checkExistence": false,
+              "clarificationNeeded": null,
+              "reasoning": "Pertanyaan user tentang bahasa yang digunakan, bukan terkait database atau entitas spesifik"
+            },
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 10254,
+            "lastUsed": 1771480729103,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "perusahaan profesional _Perusahaan Profesional",
+          {
+            "query": "perusahaan profesional ",
+            "database": "Perusahaan Profesional",
+            "intent": {
+              "isDatabaseQuery": true,
+              "queryType": "other",
+              "targetEntity": "other",
+              "keywords": [
+                "perusahaan",
+                "profesional"
+              ],
+              "specificField": null,
+              "isFollowUp": true,
+              "wantLatest": false,
+              "checkExistence": false,
+              "clarificationNeeded": "Apakah Anda bertanya tentang daftar perusahaan profesional atau informasi spesifik tentang perusahaan profesional?",
+              "reasoning": "Pertanyaan 'perusahaan profesional' tidak jelas terkait dengan entitas yang sudah ditentukan (cuaca, anggota, kegiatan, kehadiran). Mungkin user bertanya tentang daftar perusahaan atau informasi spesifik, sehingga perlu klarifikasi."
+            },
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 16348,
+            "lastUsed": 1771480850806,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "lihat data itb_Itb",
+          {
+            "query": "lihat data itb",
+            "database": "Itb",
+            "intent": {
+              "isDatabaseQuery": true,
+              "queryType": "list",
+              "targetEntity": "anggota",
+              "keywords": [
+                "lihat",
+                "data",
+                "itb"
+              ],
+              "specificField": null,
+              "isFollowUp": true,
+              "wantLatest": false,
+              "checkExistence": false,
+              "clarificationNeeded": null,
+              "reasoning": "user menggunakan kata 'lihat data' yang berarti ingin melihat daftar anggota dari organisasi 'itb'"
+            },
+            "frequency": 1,
+            "avgResultCount": 100,
+            "avgExecutionTime": 68567,
+            "lastUsed": 1771576056432,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "saya mau nanya tentang ki_Itb",
+          {
+            "query": "Saya mau nanya tentang KI",
+            "database": "Itb",
+            "intent": {
+              "isDatabaseQuery": true,
+              "queryType": "detail",
+              "targetEntity": "anggota",
+              "keywords": [
+                "ki"
+              ],
+              "specificField": null,
+              "isFollowUp": false,
+              "wantLatest": false,
+              "checkExistence": false,
+              "clarificationNeeded": null,
+              "reasoning": "User mencari informasi tentang 'ki' yang mungkin merujuk pada nama anggota"
+            },
+            "frequency": 1,
+            "avgResultCount": 100,
+            "avgExecutionTime": 35700,
+            "lastUsed": 1771576401002,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "saya mau tau data apa saja yang ada di itb_saya mau nanya tentang ki",
+          {
+            "previousQuery": "saya mau tau data apa saja yang ada di itb",
+            "currentQuery": "saya mau nanya tentang ki",
+            "database": "Itb",
+            "linkedIntent": {
+              "isDatabaseQuery": true,
+              "queryType": "detail",
+              "targetEntity": "anggota",
+              "keywords": [
+                "ki"
+              ],
+              "specificField": null,
+              "isFollowUp": false,
+              "wantLatest": false,
+              "checkExistence": false,
+              "clarificationNeeded": null,
+              "reasoning": "User mencari informasi tentang 'ki' yang mungkin merujuk pada nama anggota"
+            },
+            "frequency": 1,
+            "lastUsed": 1771576401003,
+            "confidence": 0.5,
+            "type": "context_chain"
+          }
+        ],
+        [
+          "data itb_itb_db",
+          {
+            "query": "data itb",
+            "database": "itb_db",
+            "frequency": 2,
+            "avgResultCount": 100,
+            "avgExecutionTime": null,
+            "lastUsed": 1771798059568,
+            "confidence": 0.55
+          }
+        ],
+        [
+          "saya mau informasi tentang ki_itb_db",
+          {
+            "query": "saya mau informasi tentang ki",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgResultCount": 100,
+            "lastUsed": 1771822009254,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "carikan ki tentang pangan_itb_db",
+          {
+            "query": "Carikan ki tentang pangan",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "lastUsed": 1771842829206,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan ki yang tahun 2018_itb_db",
+          {
+            "query": "tampilkan ki yang tahun 2018",
+            "database": "itb_db",
+            "intent": "follow_up",
+            "frequency": 1,
+            "avgResultCount": 20,
+            "lastUsed": 1771842926755,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa banyak paten_unknown",
+          {
+            "query": "berapa banyak paten",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 2348,
+            "lastUsed": 1772491504919,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa banyak dosen di kekayaan intelektual_itb_db",
+          {
+            "query": "berapa banyak dosen di kekayaan intelektual",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 3007,
+            "lastUsed": 1772502434138,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa total ki dari fmipa_unknown",
+          {
+            "query": "berapa total KI dari FMIPA",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 2186,
+            "lastUsed": 1772510123166,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "jumlah paten yang tersertifikasi_unknown",
+          {
+            "query": "jumlah paten yang tersertifikasi",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 7484,
+            "lastUsed": 1772521203991,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa jenis kekayaan intelektual_unknown",
+          {
+            "query": "berapa jenis kekayaan intelektual",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 2426,
+            "lastUsed": 1772546577421,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan jenis kekayaan intelektual_unknown",
+          {
+            "query": "tampilkan jenis kekayaan intelektual",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 2382,
+            "lastUsed": 1772547137234,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data paten_unknown",
+          {
+            "query": "tampilkan data paten",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 2581,
+            "lastUsed": 1772577704811,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan nama instansi yang ada di database kekayaan intelektual_unknown",
+          {
+            "query": "tampilkan nama instansi yang ada di database kekayaan intelektual",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 50,
+            "avgExecutionTime": 2691,
+            "lastUsed": 1772589907076,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya tersertifikasi yang terbaru_itb_db",
+          {
+            "query": "tampilkan ki yang statusnya tersertifikasi yang terbaru",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 3062,
+            "lastUsed": 1772590027023,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan jumlah data ki tahun 2018_unknown",
+          {
+            "query": "tampilkan jumlah data ki tahun 2018",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 2072,
+            "lastUsed": 1772592972744,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data kekayaan intelektual tahun 2019_unknown",
+          {
+            "query": "tampilkan data kekayaan intelektual tahun 2019",
+            "database": "unknown",
+            "intent": "FOLLOW_UP",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 2308,
+            "lastUsed": 1772597657587,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki tahun 2025_unknown",
+          {
+            "query": "tampilkan data ki tahun 2025",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 2406,
+            "lastUsed": 1772661400604,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang anugrah sabdono_itb_db",
+          {
+            "query": "tampilkan data ki yang Anugrah Sabdono",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 2971,
+            "lastUsed": 1772661521224,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan instansi yang ada di kekayaan intelektual_unknown",
+          {
+            "query": "tampilkan instansi yang ada di kekayaan intelektual",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 50,
+            "avgExecutionTime": 2151,
+            "lastUsed": 1772661612868,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa jenis ki_unknown",
+          {
+            "query": "berapa jenis KI",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 2,
+            "avgResultCount": 1,
+            "avgExecutionTime": 8664,
+            "lastUsed": 1772682462835,
+            "confidence": 0.55
+          }
+        ],
+        [
+          "berapa jumlah investor di ki_itb_db",
+          {
+            "query": "berapa jumlah investor di KI",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 20680,
+            "lastUsed": 1772676889694,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan kekayaan intelektual tahun 2017_unknown",
+          {
+            "query": "tampilkan kekayaan intelektual tahun 2017",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 12373,
+            "lastUsed": 1772677267095,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan detail kekayaan intelektual nomor 5 tahun 2025_itb_db",
+          {
+            "query": "tampilkan detail kekayaan intelektual nomor 5 tahun 2025",
+            "database": "itb_db",
+            "intent": "FOLLOW_UP",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 28116,
+            "lastUsed": 1772677424938,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki anugrah sabdono_itb_db",
+          {
+            "query": "tampilkan data KI anugrah sabdono",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 23385,
+            "lastUsed": 1772677573289,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "berapa banyak inventor_unknown",
+          {
+            "query": "berapa banyak inventor",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 5723,
+            "lastUsed": 1772681008652,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "ada berapa jenis ki?_unknown",
+          {
+            "query": "ada berapa jenis KI?",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 19526,
+            "lastUsed": 1772683559552,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten_unknown",
+          {
+            "query": "tampilkan data KI yang statusnya ajuan paten",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 1891,
+            "lastUsed": 1772691935203,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "saya ingin lihat data yang dari fsrd_unknown",
+          {
+            "query": "saya ingin lihat data yang dari fsrd",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 41739,
+            "lastUsed": 1772692277596,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "jumlah kekayaan intelektual tahun 2023_unknown",
+          {
+            "query": "jumlah kekayaan intelektual tahun 2023",
+            "database": "unknown",
+            "intent": "FOLLOW_UP",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 17052,
+            "lastUsed": 1772695067094,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang tahun 2025 saja_unknown",
+          {
+            "query": "tampilkan data KI yang tahun 2025 saja",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 2111,
+            "lastUsed": 1772763253963,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki 201_unknown",
+          {
+            "query": "tampilkan data KI 201",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 47283,
+            "lastUsed": 1772765799853,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya ajuan paten_unknown",
+          {
+            "query": "tampilkan ki yang statusnya ajuan paten",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 56522,
+            "lastUsed": 1772767135852,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya granted_unknown",
+          {
+            "query": "tampilkan KI yang statusnya granted",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 43226,
+            "lastUsed": 1772767839368,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki dengan status 'diberi paten'_unknown",
+          {
+            "query": "tampilkan data ki dengan status 'diberi paten'",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 27839,
+            "lastUsed": 1772768770324,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang berapa jenis ki_unknown",
+          {
+            "query": "tampilkan data KI yang berapa jenis KI",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 13239,
+            "lastUsed": 1772769553254,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki merek saja_unknown",
+          {
+            "query": "tampilkan data KI merek saja",
+            "database": "unknown",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 10,
+            "avgExecutionTime": 17954,
+            "lastUsed": 1772776572575,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan ki dari pekik argo_itb_db",
+          {
+            "query": "tampilkan ki dari pekik argo",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 30408,
+            "lastUsed": 1772782538768,
+            "confidence": 0.5
+          }
+        ]
+      ],
+      "shortcuts": [
+        [
+          "bahasanya indonesia ya",
+          {
+            "query": "bahasanya indonesia ya",
+            "database": "Cuaca",
+            "frequency": 1,
+            "avgExecutionTime": 10254,
+            "lastUsed": 1771480729103,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "perusahaan profesional",
+          {
+            "query": "perusahaan profesional ",
+            "database": "Perusahaan Profesional",
+            "frequency": 1,
+            "avgExecutionTime": 16348,
+            "lastUsed": 1771480850806,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "lihat data itb",
+          {
+            "query": "lihat data itb",
+            "database": "Itb",
+            "frequency": 1,
+            "avgExecutionTime": 68567,
+            "lastUsed": 1771576056432,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "saya mau nanya tentang ki",
+          {
+            "query": "Saya mau nanya tentang KI",
+            "database": "Itb",
+            "frequency": 1,
+            "avgExecutionTime": 35700,
+            "lastUsed": 1771576401002,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "hallo",
+          {
+            "query": "hallo",
+            "frequency": 1,
+            "lastUsed": 1771797968955,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data itb",
+          {
+            "query": "data itb",
+            "database": "itb_db",
+            "frequency": 2,
+            "avgExecutionTime": null,
+            "lastUsed": 1771798059568,
+            "confidence": 0.44
+          }
+        ],
+        [
+          "saya mau informasi tentang ki",
+          {
+            "query": "saya mau informasi tentang ki",
+            "database": "itb_db",
+            "frequency": 1,
+            "lastUsed": 1771822009254,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "carikan ki tentang pangan",
+          {
+            "query": "Carikan ki tentang pangan",
+            "database": "itb_db",
+            "frequency": 1,
+            "lastUsed": 1771842829206,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan ki yang tahun 2018",
+          {
+            "query": "tampilkan ki yang tahun 2018",
+            "database": "itb_db",
+            "frequency": 1,
+            "lastUsed": 1771842926755,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa banyak paten",
+          {
+            "query": "berapa banyak paten",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2348,
+            "lastUsed": 1772491504919,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa banyak dosen di kekayaan intelektual",
+          {
+            "query": "berapa banyak dosen di kekayaan intelektual",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 3007,
+            "lastUsed": 1772502434138,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa total ki dari fmipa",
+          {
+            "query": "berapa total KI dari FMIPA",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2186,
+            "lastUsed": 1772510123166,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "jumlah paten yang tersertifikasi",
+          {
+            "query": "jumlah paten yang tersertifikasi",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 7484,
+            "lastUsed": 1772521203991,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa jenis kekayaan intelektual",
+          {
+            "query": "berapa jenis kekayaan intelektual",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2426,
+            "lastUsed": 1772546577421,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan jenis kekayaan intelektual",
+          {
+            "query": "tampilkan jenis kekayaan intelektual",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2382,
+            "lastUsed": 1772547137234,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data paten",
+          {
+            "query": "tampilkan data paten",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2581,
+            "lastUsed": 1772577704811,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan nama instansi yang ada di database kekayaan intelektual",
+          {
+            "query": "tampilkan nama instansi yang ada di database kekayaan intelektual",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2691,
+            "lastUsed": 1772589907076,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya tersertifikasi yang terbaru",
+          {
+            "query": "tampilkan ki yang statusnya tersertifikasi yang terbaru",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 3062,
+            "lastUsed": 1772590027023,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan jumlah data ki tahun 2018",
+          {
+            "query": "tampilkan jumlah data ki tahun 2018",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2072,
+            "lastUsed": 1772592972744,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data kekayaan intelektual tahun 2019",
+          {
+            "query": "tampilkan data kekayaan intelektual tahun 2019",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2308,
+            "lastUsed": 1772597657587,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki tahun 2025",
+          {
+            "query": "tampilkan data ki tahun 2025",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2406,
+            "lastUsed": 1772661400604,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang anugrah sabdono",
+          {
+            "query": "tampilkan data ki yang Anugrah Sabdono",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 2971,
+            "lastUsed": 1772661521224,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan instansi yang ada di kekayaan intelektual",
+          {
+            "query": "tampilkan instansi yang ada di kekayaan intelektual",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2151,
+            "lastUsed": 1772661612868,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa jenis ki",
+          {
+            "query": "berapa jenis KI",
+            "database": "unknown",
+            "frequency": 2,
+            "avgExecutionTime": 8664,
+            "lastUsed": 1772682462835,
+            "confidence": 0.44
+          }
+        ],
+        [
+          "berapa jumlah investor di ki",
+          {
+            "query": "berapa jumlah investor di KI",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 20680,
+            "lastUsed": 1772676889694,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan kekayaan intelektual tahun 2017",
+          {
+            "query": "tampilkan kekayaan intelektual tahun 2017",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 12373,
+            "lastUsed": 1772677267095,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan detail kekayaan intelektual nomor 5 tahun 2025",
+          {
+            "query": "tampilkan detail kekayaan intelektual nomor 5 tahun 2025",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 28116,
+            "lastUsed": 1772677424938,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki anugrah sabdono",
+          {
+            "query": "tampilkan data KI anugrah sabdono",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 23385,
+            "lastUsed": 1772677573289,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "berapa banyak inventor",
+          {
+            "query": "berapa banyak inventor",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 5723,
+            "lastUsed": 1772681008652,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "ada berapa jenis ki?",
+          {
+            "query": "ada berapa jenis KI?",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 19526,
+            "lastUsed": 1772683559552,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten",
+          {
+            "query": "tampilkan data KI yang statusnya ajuan paten",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 1891,
+            "lastUsed": 1772691935203,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "saya ingin lihat data yang dari fsrd",
+          {
+            "query": "saya ingin lihat data yang dari fsrd",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 41739,
+            "lastUsed": 1772692277596,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "jumlah kekayaan intelektual tahun 2023",
+          {
+            "query": "jumlah kekayaan intelektual tahun 2023",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 17052,
+            "lastUsed": 1772695067094,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang tahun 2025 saja",
+          {
+            "query": "tampilkan data KI yang tahun 2025 saja",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 2111,
+            "lastUsed": 1772763253963,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki 201",
+          {
+            "query": "tampilkan data KI 201",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 47283,
+            "lastUsed": 1772765799853,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya ajuan paten",
+          {
+            "query": "tampilkan ki yang statusnya ajuan paten",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 56522,
+            "lastUsed": 1772767135852,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya granted",
+          {
+            "query": "tampilkan KI yang statusnya granted",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 43226,
+            "lastUsed": 1772767839368,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki dengan status 'diberi paten'",
+          {
+            "query": "tampilkan data ki dengan status 'diberi paten'",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 27839,
+            "lastUsed": 1772768770324,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang berapa jenis ki",
+          {
+            "query": "tampilkan data KI yang berapa jenis KI",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 13239,
+            "lastUsed": 1772769553254,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki merek saja",
+          {
+            "query": "tampilkan data KI merek saja",
+            "database": "unknown",
+            "frequency": 1,
+            "avgExecutionTime": 17954,
+            "lastUsed": 1772776572575,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan ki dari pekik argo",
+          {
+            "query": "tampilkan ki dari pekik argo",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 30408,
+            "lastUsed": 1772782538768,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "bahasanya indonesia ya",
+          {
+            "databases": [
+              {
+                "name": "Cuaca",
+                "score": 1,
+                "lastUsed": 1771480729103
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "perusahaan profesional",
+          {
+            "databases": [
+              {
+                "name": "Perusahaan Profesional",
+                "score": 1,
+                "lastUsed": 1771480850806
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "lihat data itb",
+          {
+            "databases": [
+              {
+                "name": "Itb",
+                "score": 1,
+                "lastUsed": 1771576056432
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "saya mau nanya tentang ki",
+          {
+            "databases": [
+              {
+                "name": "Itb",
+                "score": 1,
+                "lastUsed": 1771576401002
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "hallo",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771797968955
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data itb",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 2.5,
+                "lastUsed": 1771798059568
+              }
+            ],
+            "totalQueries": 2
+          }
+        ],
+        [
+          "saya mau informasi tentang ki",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1771822009254
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "carikan ki tentang pangan",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1771842829206
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan ki yang tahun 2018",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1771842926755
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa banyak paten",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772491504919
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa banyak dosen di kekayaan intelektual",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772502434138
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa total ki dari fmipa",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772510123166
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "jumlah paten yang tersertifikasi",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772521203991
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa jenis kekayaan intelektual",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772546577421
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan jenis kekayaan intelektual",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772547137234
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data paten",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772577704811
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan nama instansi yang ada di database kekayaan intelektual",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772589907076
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya tersertifikasi yang terbaru",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772590027023
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan jumlah data ki tahun 2018",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772592972744
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data kekayaan intelektual tahun 2019",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772597657587
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki tahun 2025",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772661400604
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang anugrah sabdono",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772661521224
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan instansi yang ada di kekayaan intelektual",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772661612868
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa jenis ki",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 2.5,
+                "lastUsed": 1772682462835
+              }
+            ],
+            "totalQueries": 2
+          }
+        ],
+        [
+          "berapa jumlah investor di ki",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772676889694
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan kekayaan intelektual tahun 2017",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772677267095
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan detail kekayaan intelektual nomor 5 tahun 2025",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772677424938
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki anugrah sabdono",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772677573289
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "berapa banyak inventor",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772681008652
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "ada berapa jenis ki?",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772683559552
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772691935203
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "saya ingin lihat data yang dari fsrd",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772692277596
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "jumlah kekayaan intelektual tahun 2023",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772695067094
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang tahun 2025 saja",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772763253963
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki 201",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772765799853
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya ajuan paten",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772767135852
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan ki yang statusnya granted",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772767839368
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki dengan status 'diberi paten'",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772768770324
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang berapa jenis ki",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772769553254
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki merek saja",
+          {
+            "databases": [
+              {
+                "name": "unknown",
+                "score": 1,
+                "lastUsed": 1772776572575
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan ki dari pekik argo",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1772782538768
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": [
+        [
+          "kehadiran anggota_unknown",
+          {
+            "query": "kehadiran anggota",
+            "database": "unknown",
+            "errors": [
+              {
+                "type": "NO_RESULTS",
+                "message": "Query tidak menemukan hasil di database manapun",
+                "timestamp": 1771480808897
+              }
+            ],
+            "frequency": 1
+          }
+        ],
+        [
+          "kegiatan terbaru nya coba_unknown",
+          {
+            "query": "kegiatan terbaru nya coba",
+            "database": "unknown",
+            "errors": [
+              {
+                "type": "NO_RESULTS",
+                "message": "Query tidak menemukan hasil di database manapun",
+                "timestamp": 1771480925205
+              }
+            ],
+            "frequency": 1
+          }
+        ],
+        [
+          "cetatan kehadiran nya_unknown",
+          {
+            "query": "cetatan kehadiran nya",
+            "database": "unknown",
+            "errors": [
+              {
+                "type": "NO_RESULTS",
+                "message": "Query tidak menemukan hasil di database manapun",
+                "timestamp": 1771639604008
+              }
+            ],
+            "frequency": 1
+          }
+        ]
+      ]
+    },
+    {
+      "userId": "tester_1771776269927",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot, kamu siapa dan pakai database apa?",
+          {
+            "query": "Assalamualaikum bot, kamu siapa dan pakai database apa?",
+            "frequency": 1,
+            "lastUsed": 1771776270536,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+          {
+            "query": "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+            "frequency": 1,
+            "lastUsed": 1771776274270,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan yang lain",
+          {
+            "query": "tampilkan yang lain",
+            "frequency": 1,
+            "lastUsed": 1771776277524,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot, kamu siapa dan pakai database apa?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776270536
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776274270
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan yang lain",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776277524
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776300322",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot, kamu siapa dan pakai database apa?",
+          {
+            "query": "Assalamualaikum bot, kamu siapa dan pakai database apa?",
+            "frequency": 1,
+            "lastUsed": 1771776300860,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+          {
+            "query": "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+            "frequency": 1,
+            "lastUsed": 1771776304446,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan yang lain",
+          {
+            "query": "tampilkan yang lain",
+            "frequency": 1,
+            "lastUsed": 1771776307846,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot, kamu siapa dan pakai database apa?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776300860
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "kasih tau dong rekomen pertanyaan buat data perusahaan profesional",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776304446
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan yang lain",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776307846
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776348728",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776349275,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776349714,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776355335,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776349275
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776349714
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776355335
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776382143",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776382680,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776383218,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776406409,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776382680
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776383218
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776406409
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776529417",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776531709,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776533933,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776550739,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776531709
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776533933
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776550739
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776591530",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776594306,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776595538,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776608938,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776594306
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776595538
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776608938
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776688742",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776689703,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776690870,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776705965,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776689703
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776690870
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776705965
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776741895",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776743353,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776748862,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776758322,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776743353
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776748862
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776758322
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    },
+    {
+      "userId": "tester_1771776805619",
+      "patterns": [],
+      "shortcuts": [
+        [
+          "assalamualaikum bot",
+          {
+            "query": "Assalamualaikum bot",
+            "frequency": 1,
+            "lastUsed": 1771776807031,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "query": "Apa saja yang bisa kamu lakukan?",
+            "frequency": 1,
+            "lastUsed": 1771776808566,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "query": "rekomen dong",
+            "frequency": 1,
+            "lastUsed": 1771776818660,
+            "confidence": 0.3
+          }
+        ]
+      ],
+      "preferences": [
+        [
+          "assalamualaikum bot",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776807031
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa saja yang bisa kamu lakukan?",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776808566
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "rekomen dong",
+          {
+            "databases": [
+              {
+                "score": 1,
+                "lastUsed": 1771776818660
+              }
+            ],
+            "totalQueries": 1
+          }
+        ]
+      ],
+      "feedback": [],
+      "errors": []
+    }
+  ],
+  "lastSaved": 1773070414595
+}

@@ -1,0 +1,424 @@
+const axios = require("axios");
+const dbHelper = require("./db-helper");
+const mysql = require("mysql2/promise");
+require("dotenv").config();
+
+/**
+ * SMART AI SERVICE - Mirip Admin Chatbot
+ * Bisa jawab apa saja, tapi tetap prioritas database aktif
+ */
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+const COHERE_API_KEY = process.env.COHERE_API_KEY;
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+const API_CONFIGS = [
+  {
+    name: "Groq",
+    key: GROQ_API_KEY,
+    url: "https://api.groq.com/openai/v1/chat/completions",
+    model: "llama-3.3-70b-versatile",
+    enabled: !!GROQ_API_KEY,
+  },
+  {
+    name: "Gemini",
+    key: GEMINI_API_KEY,
+    url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    model: "gemini-1.5-flash-latest",
+    enabled: !!GEMINI_API_KEY,
+    isGemini: true,
+  },
+  {
+    name: "Mistral",
+    key: MISTRAL_API_KEY,
+    url: "https://api.mistral.ai/v1/chat/completions",
+    model: "mistral-small-latest",
+    enabled: !!MISTRAL_API_KEY,
+  },
+  {
+    name: "Cohere",
+    key: COHERE_API_KEY,
+    url: "https://api.cohere.ai/v1/chat",
+    model: "command",
+    enabled: !!COHERE_API_KEY,
+    isCohere: true,
+  },
+  {
+    name: "HuggingFace",
+    key: HUGGINGFACE_API_KEY,
+    url: "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct",
+    model: "meta-llama/Meta-Llama-3-8B-Instruct",
+    enabled: !!HUGGINGFACE_API_KEY,
+    isHuggingFace: true,
+  },
+  {
+    name: "OpenRouter",
+    key: OPENROUTER_API_KEY,
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    model: "google/gemini-2.0-flash-exp:free",
+    enabled: !!OPENROUTER_API_KEY,
+  },
+].filter((api) => api.enabled);
+
+console.log(
+  "🤖 Smart AI APIs:",
+  API_CONFIGS.map((api) => api.name).join(" → "),
+);
+
+class SmartAIService {
+  constructor() {
+    this.conversationHistory = new Map();
+    this.userPreferences = new Map();
+  }
+
+  /**
+   * Fetch data real-time dari database aktif
+   */
+  async fetchDatabaseContext() {
+    try {
+      const dbConfigs = dbHelper.getAllActiveConnectionConfigs();
+      const context = {
+        totalDatabases: dbConfigs.length,
+        databases: [],
+      };
+
+      for (const dbConfig of dbConfigs) {
+        try {
+          const connection = await mysql.createConnection(dbConfig);
+          const [tables] = await connection.execute("SHOW TABLES");
+          const tableNames = tables.map((t) => Object.values(t)[0]);
+
+          const dbInfo = {
+            name: dbConfig.database,
+            displayName: this.formatDbName(dbConfig.database),
+            tables: [],
+          };
+
+          // Ambil sample data dari setiap tabel
+          for (const tableName of tableNames.slice(0, 3)) {
+            const [count] = await connection.execute(
+              `SELECT COUNT(*) as total FROM ??`,
+              [tableName]
+            );
+            const [sample] = await connection.execute(
+              `SELECT * FROM ?? LIMIT 3`,
+              [tableName]
+            );
+
+            dbInfo.tables.push({
+              name: tableName,
+              totalRecords: count[0].total,
+              sampleData: sample,
+            });
+          }
+
+          context.databases.push(dbInfo);
+          await connection.end();
+        } catch (err) {
+          console.error(`Error fetching ${dbConfig.database}:`, err.message);
+        }
+      }
+
+      return context;
+    } catch (error) {
+      console.error("Error fetching database context:", error);
+      return { totalDatabases: 0, databases: [] };
+    }
+  }
+
+  /**
+   * Build context prompt dengan data real dan info database
+   */
+  async buildSmartPrompt(question, userId) {
+    const dbContext = await this.fetchDatabaseContext();
+    const history = this.getHistory(userId);
+
+    // Build INFO DATABASE (jumlah, nama, tabel)
+    let dbInfo = "";
+    if (dbContext.databases.length > 0) {
+      dbInfo = `\n\nINFORMASI DATABASE AKTIF:\nJumlah Database: ${dbContext.databases.length}\n\n`;
+      dbContext.databases.forEach((db, idx) => {
+        dbInfo += `Database ${idx + 1}: ${db.displayName}\n`;
+        dbInfo += `  Tabel: ${db.tables.map(t => t.name).join(", ")}\n`;
+        dbInfo += `  Total Records: ${db.tables.reduce((sum, t) => sum + t.totalRecords, 0)}\n`;
+      });
+    }
+
+    // Build SAMPLE DATA REAL (Selalu sertakan jika ada agar AI lebih pintar)
+    let sampleData = "";
+    if (dbContext.databases.length > 0) {
+      sampleData = "\n\nSAMPLE DATA DARI DATABASE (GUNAKAN INI):\n";
+      dbContext.databases.forEach((db) => {
+        db.tables.forEach((table) => {
+          if (table.sampleData && table.sampleData.length > 0) {
+            sampleData += `\n${db.displayName} - ${table.name}:\n`;
+            table.sampleData.slice(0, 5).forEach((data, idx) => {
+              sampleData += `${idx + 1}. ${JSON.stringify(data)}\n`;
+            });
+          }
+        });
+      });
+    }
+
+    // Build history
+    let historyContext = "";
+    if (history.length > 0) {
+      historyContext = "\n\nRIWAYAT:\n";
+      history.slice(-2).forEach((h) => {
+        historyContext += `${h.role}: ${h.content.substring(0, 80)}\n`;
+      });
+    }
+
+    const prompt = `Kamu adalah asisten database yang HARUS menggunakan data REAL.
+
+PERTANYAAN: ${question}${dbInfo}${sampleData}${historyContext}
+
+ATURAN WAJIB:
+1. Jika user tanya "ada berapa database", "database aktif", "jumlah database":
+   → Jawab berdasarkan INFORMASI DATABASE AKTIF di atas.
+   → Sebutkan nama organisasi dan ringkasan data.
+
+2. Jika user minta DATA atau informasi spesifik:
+   → WAJIB gunakan SAMPLE DATA DARI DATABASE yang disediakan.
+   → JANGAN buat data palsu.
+   → Gunakan label field yang sesuai dengan JSON (misal: "Nama", "Jabatan", "Judul", dll).
+   → Format: penomoran rapi.
+
+3. Jika user tanya UMUM atau penjelasan:
+   → Jawab dengan pengetahuanmu secara profesional.
+
+4. Minta KLARIFIKASI jika pertanyaan ambigu.
+
+FORMAT OUTPUT:
+- Gunakan penomoran: 1., 2., 3.
+- Field penting: Ambil label dari key JSON yang relevan.
+- Separator: ━━━━━━━━━━━━━━━━━━━━━━
+- Profesional, formal, bahasa Indonesia.
+- DILARANG MENGGUNAKAN EMOJI.
+
+Jawab SESUAI data REAL, JANGAN ngasal:`;
+
+    return prompt;
+  }
+
+  /**
+   * Process message dengan AI yang pintar
+   */
+  async processSmartMessage(question, userId = "default") {
+    try {
+      // Build smart prompt
+      const prompt = await this.buildSmartPrompt(question, userId);
+
+      // Call AI
+      const response = await this.callAI(prompt);
+
+      if (response) {
+        // Save to history
+        this.addToHistory(userId, "user", question);
+        this.addToHistory(userId, "assistant", response);
+
+        // Extract preferences
+        this.extractPreferences(question, response, userId);
+
+        return response;
+      }
+
+      // Fallback
+      return this.buildFallbackResponse(question);
+    } catch (error) {
+      console.error("Smart AI error:", error);
+      return this.buildFallbackResponse(question);
+    }
+  }
+
+  /**
+   * Call AI dengan fallback (Support 6 API)
+   */
+  async callAI(prompt, apiIndex = 0, retry = 0) {
+    if (apiIndex >= API_CONFIGS.length) {
+      throw new Error("Semua API tidak tersedia");
+    }
+
+    const api = API_CONFIGS[apiIndex];
+    console.log(`🤖 Smart AI trying ${api.name}...`);
+
+    try {
+      const timeout = 30000;
+      let response;
+
+      if (api.isGemini) {
+        response = await axios.post(
+          api.url,
+          {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          },
+          { timeout }
+        );
+        return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      } else if (api.isCohere) {
+        response = await axios.post(
+          api.url,
+          {
+            message: prompt,
+            model: api.model,
+            temperature: 0.7,
+            max_tokens: 1024,
+          },
+          {
+            timeout,
+            headers: {
+              Authorization: `Bearer ${api.key}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        return response.data?.text?.trim();
+      } else if (api.isHuggingFace) {
+        response = await axios.post(
+          api.url,
+          {
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 1024,
+              temperature: 0.7,
+              return_full_text: false,
+            },
+          },
+          {
+            timeout: 60000,
+            headers: {
+              Authorization: `Bearer ${api.key}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        return response.data?.[0]?.generated_text?.trim() || response.data?.generated_text?.trim();
+      } else {
+        // OpenAI-compatible (Groq, Mistral, OpenRouter)
+        response = await axios.post(
+          api.url,
+          {
+            model: api.model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1024,
+          },
+          {
+            timeout,
+            headers: {
+              Authorization: `Bearer ${api.key}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        return response.data?.choices?.[0]?.message?.content?.trim();
+      }
+    } catch (error) {
+      const status = error.response?.status;
+
+      if (status === 429) {
+        console.log(`⚠️ ${api.name} rate limited, trying next...`);
+        return this.callAI(prompt, apiIndex + 1, 0);
+      }
+
+      if (status === 503 && api.isHuggingFace && retry < 1) {
+        console.log(`⏳ ${api.name} loading model, retrying in 10s...`);
+        await new Promise((r) => setTimeout(r, 10000));
+        return this.callAI(prompt, apiIndex, retry + 1);
+      }
+
+      if ((error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") && retry < 1) {
+        console.log(`🔄 ${api.name} timeout, retrying...`);
+        return this.callAI(prompt, apiIndex, retry + 1);
+      }
+
+      console.error(`❌ ${api.name} error:`, error.message);
+      return this.callAI(prompt, apiIndex + 1, 0);
+    }
+  }
+
+  /**
+   * Extract dan simpan preferensi user
+   */
+  extractPreferences(message, response, userId) {
+    const lowerMsg = message.toLowerCase();
+    const preferences = this.userPreferences.get(userId) || {};
+
+    // Deteksi panggilan
+    if (/(panggil|sebut|bilang).*(aku|saya|gue|gw).*(sayang|bos|kak|mas|mbak|bang)/i.test(lowerMsg)) {
+      const match = lowerMsg.match(/(sayang|bos|kak|mas|mbak|bang|boss)/i);
+      if (match) {
+        preferences.nickname = match[0];
+      }
+    }
+
+    // Deteksi gaya bahasa
+    if (/(jawab|bicara|ngomong).*(formal|santai|gaul)/i.test(lowerMsg)) {
+      const match = lowerMsg.match(/(formal|santai|gaul)/i);
+      if (match) {
+        preferences.style = match[0];
+      }
+    }
+
+    this.userPreferences.set(userId, preferences);
+  }
+
+  /**
+   * Fallback response
+   */
+  buildFallbackResponse(question) {
+    const lowerQ = question.toLowerCase();
+
+    if (/^(hai|halo|hi|hello|assalamu)/i.test(lowerQ)) {
+      return "Halo! Saya asisten data yang siap membantu Anda. Ada yang bisa saya bantu hari ini?";
+    }
+
+    if (/(terima|makasih|thanks)/i.test(lowerQ)) {
+      return "Sama-sama. Senang bisa membantu Anda. Jika ada pertanyaan lain, silakan sampaikan.";
+    }
+
+    return "Maaf, terjadi kendala teknis sementara. Saya tetap siap membantu Anda mencari informasi dari database aktif. Silakan tanyakan kembali.";
+  }
+
+  /**
+   * History management
+   */
+  addToHistory(userId, role, content) {
+    if (!this.conversationHistory.has(userId)) {
+      this.conversationHistory.set(userId, []);
+    }
+    const history = this.conversationHistory.get(userId);
+    history.push({ role, content, timestamp: Date.now() });
+    if (history.length > 20) history.shift();
+  }
+
+  getHistory(userId) {
+    return this.conversationHistory.get(userId) || [];
+  }
+
+  clearHistory(userId) {
+    this.conversationHistory.delete(userId);
+    this.userPreferences.delete(userId);
+  }
+
+  /**
+   * Format database name
+   */
+  formatDbName(dbName) {
+    return dbName
+      .replace("_db", "")
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+}
+
+module.exports = new SmartAIService();

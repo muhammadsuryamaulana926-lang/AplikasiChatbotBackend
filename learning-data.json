@@ -1,0 +1,505 @@
+{
+  "totalQueries": 63,
+  "topicFrequency": {
+    "umum": 51,
+    "anggota": 6,
+    "kehadiran": 3,
+    "keuangan": 3,
+    "kontak": 1
+  },
+  "databaseUsage": {
+    "Itb": 12,
+    "itb_db": 9,
+    "itb": 1,
+    "Perusahaan Profesional": 1
+  },
+  "queryPatterns": {
+    "greeting": 7,
+    "general": 7,
+    "follow_up": 12,
+    "selection": 1,
+    "conversation": 21,
+    "list": 6,
+    "search": 1,
+    "smart_ai": 8
+  },
+  "popularQuestions": [
+    {
+      "simplified": "assalamualaikum",
+      "question": "assalamualaikum",
+      "variations": [
+        "assalamualaikum",
+        "assalamualaikum",
+        "assalamualaikum",
+        "assalamualaikum"
+      ],
+      "count": 4,
+      "lastAsked": "2026-02-22T14:24:07.621Z"
+    },
+    {
+      "simplified": "informasi seputar",
+      "question": "informasi seputar ki",
+      "variations": [
+        "informasi seputar ki",
+        "informasi seputar ki",
+        "informasi seputar ki",
+        "informasi seputar ki"
+      ],
+      "count": 4,
+      "lastAsked": "2026-02-22T15:43:05.617Z"
+    },
+    {
+      "simplified": "informasi",
+      "question": "informasi",
+      "variations": [
+        "informasi",
+        "informasi",
+        "informasi k"
+      ],
+      "count": 3,
+      "lastAsked": "2026-02-22T14:53:48.790Z"
+    },
+    {
+      "simplified": "hai",
+      "question": "hai",
+      "variations": [
+        "hai",
+        "hai",
+        "hai"
+      ],
+      "count": 3,
+      "lastAsked": "2026-02-22T15:42:01.685Z"
+    },
+    {
+      "simplified": "tentang",
+      "question": "tentang k",
+      "variations": [
+        "tentang k",
+        "tentang ki"
+      ],
+      "count": 2,
+      "lastAsked": "2026-02-21T13:59:35.655Z"
+    },
+    {
+      "simplified": "lanjut",
+      "question": "lanjut",
+      "variations": [
+        "lanjut",
+        "lanjut"
+      ],
+      "count": 2,
+      "lastAsked": "2026-02-22T13:57:39.145Z"
+    },
+    {
+      "simplified": "ada apa informasi saja",
+      "question": "ada informasi apa saja",
+      "variations": [
+        "ada informasi apa saja",
+        "ada informasi apa saja"
+      ],
+      "count": 2,
+      "lastAsked": "2026-02-22T15:42:28.311Z"
+    },
+    {
+      "simplified": "ada apa informasi itb saja",
+      "question": "ada informasi apa saja di itb??",
+      "variations": [
+        "ada informasi apa saja di itb??"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:44:49.956Z"
+    },
+    {
+      "simplified": "anggota data nya",
+      "question": "data anggota nya?",
+      "variations": [
+        "data anggota nya?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:45:35.353Z"
+    },
+    {
+      "simplified": "nya orang saja siapa",
+      "question": "siapa saja orang nya?",
+      "variations": [
+        "siapa saja orang nya?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:47:00.133Z"
+    },
+    {
+      "simplified": "",
+      "question": "3",
+      "variations": [
+        "3"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:47:53.078Z"
+    },
+    {
+      "simplified": "catatan kehadiran nya",
+      "question": "catatan kehadiran nya",
+      "variations": [
+        "catatan kehadiran nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:48:29.691Z"
+    },
+    {
+      "simplified": "ada catatan jadi kehadiran nya",
+      "question": "jadi gk ada catatan kehadiran nya?",
+      "variations": [
+        "jadi gk ada catatan kehadiran nya?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:49:04.395Z"
+    },
+    {
+      "simplified": "makasih",
+      "question": "makasih ya",
+      "variations": [
+        "makasih ya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:49:18.354Z"
+    },
+    {
+      "simplified": "pagi selamat",
+      "question": "selamat pagi",
+      "variations": [
+        "selamat pagi"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:49:37.622Z"
+    },
+    {
+      "simplified": "apa itb itu",
+      "question": "apa si itu itb?",
+      "variations": [
+        "apa si itu itb?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T04:50:32.304Z"
+    },
+    {
+      "simplified": "ada anggota nama nya tidak",
+      "question": "ada nama anggota nya tidak?",
+      "variations": [
+        "ada nama anggota nya tidak?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T05:27:44.475Z"
+    },
+    {
+      "simplified": "informasi tentang",
+      "question": "informasi tentang ki",
+      "variations": [
+        "informasi tentang ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T09:59:50.408Z"
+    },
+    {
+      "simplified": "ada apa karya nya saja seni",
+      "question": "karya seni nya ada apa saja",
+      "variations": [
+        "karya seni nya ada apa saja"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:00:25.924Z"
+    },
+    {
+      "simplified": "dosen",
+      "question": "dosen ki",
+      "variations": [
+        "dosen ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:01:18.215Z"
+    },
+    {
+      "simplified": "instansi investor nama nama",
+      "question": "nama nama instansi investor",
+      "variations": [
+        "nama nama instansi investor"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:03:53.064Z"
+    },
+    {
+      "simplified": "data seputar",
+      "question": "data seputar ki",
+      "variations": [
+        "data seputar ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:14:25.263Z"
+    },
+    {
+      "simplified": "lagi lain nya tampilkan yang",
+      "question": "tampilkan lagi yang lain nya",
+      "variations": [
+        "tampilkan lagi yang lain nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:16:01.001Z"
+    },
+    {
+      "simplified": "boy data info itb",
+      "question": "info data itb boy",
+      "variations": [
+        "info data itb boy"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:39:26.741Z"
+    },
+    {
+      "simplified": "lain nya yang",
+      "question": "yang lain nya",
+      "variations": [
+        "yang lain nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:41:02.886Z"
+    },
+    {
+      "simplified": "anda siapa",
+      "question": "siapa anda?",
+      "variations": [
+        "siapa anda?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:49:06.624Z"
+    },
+    {
+      "simplified": "data informasi",
+      "question": "informasi data ki",
+      "variations": [
+        "informasi data ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:49:56.548Z"
+    },
+    {
+      "simplified": "data lainnya",
+      "question": "data lainnya",
+      "variations": [
+        "data lainnya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T10:53:15.782Z"
+    },
+    {
+      "simplified": "bisa chatbotapa kamu lakukan malam saya selamat untuk",
+      "question": "selamat malam chatbot,apa yg bisa kamu lakukan untuk saya?",
+      "variations": [
+        "selamat malam chatbot,apa yg bisa kamu lakukan untuk saya?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T12:24:00.090Z"
+    },
+    {
+      "simplified": "ada apa informasi saja yang",
+      "question": "informasi apa saja yang ada di ki",
+      "variations": [
+        "informasi apa saja yang ada di ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T12:36:04.342Z"
+    },
+    {
+      "simplified": "carikan iya",
+      "question": "iya carikan",
+      "variations": [
+        "iya carikan"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T12:37:03.417Z"
+    },
+    {
+      "simplified": "ada berapa cuman data data emng nya nya segitu",
+      "question": "cuman segitu data nya?? ada berapa data emng nya?",
+      "variations": [
+        "cuman segitu data nya?? ada berapa data emng nya?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T12:38:51.935Z"
+    },
+    {
+      "simplified": "kam siapa",
+      "question": "siapa kam",
+      "variations": [
+        "siapa kam"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T13:16:40.947Z"
+    },
+    {
+      "simplified": "informasi seputaran",
+      "question": "informasi seputaran ki",
+      "variations": [
+        "informasi seputaran ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T13:18:38.851Z"
+    },
+    {
+      "simplified": "database",
+      "question": "database?",
+      "variations": [
+        "database?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T16:24:16.025Z"
+    },
+    {
+      "simplified": "hallo",
+      "question": "hallo",
+      "variations": [
+        "hallo"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T16:29:52.755Z"
+    },
+    {
+      "simplified": "woi",
+      "question": "woi",
+      "variations": [
+        "woi"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T16:30:03.469Z"
+    },
+    {
+      "simplified": "adalah admin admin admin aktif angka asisten assalamualaikum assalamualaikum atas aturan balas caratutorial chat chat chatbot dan dan dan dari data data data database database database dengan dengan gunakan hai halaman halaman halo hari ini jawab jawab jelas jika jika jika kamu kasih konteks konteks membantu mengelola menyapa natural panel panel pengguna pengguna pengguna pengguna pertanyaan ramah ramah realtime realtime sesuai singkat sistem stepbystep tanya tanya tentang terbaru total total untuk user user user user wajib yang",
+      "question": "Kamu adalah asisten admin panel yang ramah dan membantu.\n\nKONTEKS HALAMAN: Admin Panel\nSistem admin untuk mengelola chatbot, pengguna, dan database.\n\nDATA REAL-TIME TERBARU:\n- Total Pengguna: 3\n- Pengguna Aktif: 2\n- Total Database: 5\n- Chat Hari Ini: 127\n\nATURAN:\n1. Jika user tanya tentang data (pengguna, database, chat), WAJIB gunakan angka dari DATA REAL-TIME di atas\n2. Jika user menyapa (halo, hai, assalamualaikum), balas dengan ramah\n3. Jika user tanya cara/tutorial, kasih step-by-step sesuai konteks halaman\n4. Jawab dengan singkat, jelas, dan natural\n\nPertanyaan user: assalamualaikum\n\nJawab:",
+      "variations": [
+        "Kamu adalah asisten admin panel yang ramah dan membantu.\n\nKONTEKS HALAMAN: Admin Panel\nSistem admin untuk mengelola chatbot, pengguna, dan database.\n\nDATA REAL-TIME TERBARU:\n- Total Pengguna: 3\n- Pengguna Aktif: 2\n- Total Database: 5\n- Chat Hari Ini: 127\n\nATURAN:\n1. Jika user tanya tentang data (pengguna, database, chat), WAJIB gunakan angka dari DATA REAL-TIME di atas\n2. Jika user menyapa (halo, hai, assalamualaikum), balas dengan ramah\n3. Jika user tanya cara/tutorial, kasih step-by-step sesuai konteks halaman\n4. Jawab dengan singkat, jelas, dan natural\n\nPertanyaan user: assalamualaikum\n\nJawab:"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-21T16:35:23.289Z"
+    },
+    {
+      "simplified": "absensi data perusahaan profesional",
+      "question": "data absensi perusahaan profesional",
+      "variations": [
+        "data absensi perusahaan profesional"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:04:19.199Z"
+    },
+    {
+      "simplified": "haj",
+      "question": "haj",
+      "variations": [
+        "haj"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:16:09.165Z"
+    },
+    {
+      "simplified": "ada apa data saja seputar sini",
+      "question": "ada data seputar apa saja di sini?",
+      "variations": [
+        "ada data seputar apa saja di sini?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:16:43.513Z"
+    },
+    {
+      "simplified": "apa berikan bisa informasi kamu saja saja yang",
+      "question": "informasi apa saja yang bisa kamu berikan ke saja?",
+      "variations": [
+        "informasi apa saja yang bisa kamu berikan ke saja?"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:24:55.015Z"
+    },
+    {
+      "simplified": "data dosen liatkan nya",
+      "question": "liatkan data dosen nya",
+      "variations": [
+        "liatkan data dosen nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:25:48.092Z"
+    },
+    {
+      "simplified": "lai nya yang",
+      "question": "yang lai nya",
+      "variations": [
+        "yang lai nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:26:03.339Z"
+    },
+    {
+      "simplified": "kasih nya rekomendasi saya",
+      "question": "kasih saya rekomendasi nya",
+      "variations": [
+        "kasih saya rekomendasi nya"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:36:59.104Z"
+    },
+    {
+      "simplified": "anggota data dosen",
+      "question": "data anggota dosen",
+      "variations": [
+        "data anggota dosen"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:37:27.965Z"
+    },
+    {
+      "simplified": "anggota data",
+      "question": "data anggota",
+      "variations": [
+        "data anggota"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:37:45.949Z"
+    },
+    {
+      "simplified": "data",
+      "question": "data ki",
+      "variations": [
+        "data ki"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:44:54.163Z"
+    },
+    {
+      "simplified": "ada aktif berapa database yang",
+      "question": "ada berapa database yang aktif",
+      "variations": [
+        "ada berapa database yang aktif"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:45:44.001Z"
+    },
+    {
+      "simplified": "informasi intelektual kekayaan",
+      "question": "informasi kekayaan intelektual",
+      "variations": [
+        "informasi kekayaan intelektual"
+      ],
+      "count": 1,
+      "lastAsked": "2026-02-22T14:54:21.974Z"
+    }
+  ],
+  "userInsights": [],
+  "hourlyActivity": {
+    "11": 10,
+    "12": 3,
+    "16": 1,
+    "17": 10,
+    "19": 5,
+    "20": 10,
+    "21": 15,
+    "22": 3,
+    "23": 6
+  },
+  "lastUpdated": "2026-02-22T15:43:05.617Z",
+  "createdAt": "2026-02-21T04:21:50.425Z"
+}

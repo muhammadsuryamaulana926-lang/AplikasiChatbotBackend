@@ -1,0 +1,22 @@
+const ChatbotHandler = require('./chatbot-logic');
+const dbHelper = require('./db-helper');
+const mysql = require('mysql2/promise');
+
+async function debugSchema() {
+    const handler = new ChatbotHandler();
+    const configs = dbHelper.getAllActiveConnectionConfigs();
+
+    for (const config of configs) {
+        console.log(`\n--- DATABASE: ${config.database} ---`);
+        const connection = await mysql.createConnection(config);
+        await handler.ensureSchemaCache(connection, config.database);
+        const catalog = await handler.getDatabaseCatalog();
+        console.log("SCHEMA TEXT:");
+        // handler doesn't export schemaCache directly but we can see it via getDatabaseCatalog summary
+        console.log(catalog.summary);
+        await connection.end();
+    }
+    process.exit(0);
+}
+
+debugSchema();

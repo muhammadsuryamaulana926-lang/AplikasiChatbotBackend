@@ -1,0 +1,85 @@
+{
+  "errors": [
+    [
+      "tampilkan daftar kekayaan intelektual tahun 2016",
+      [
+        {
+          "sql": "SELECT * FROM kekayaan_intelektual WHERE YEAR(tgl_pendaftaran) = 2016 LIMIT 10 OFFSET 0\n```",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '```' at line 2",
+          "timestamp": 1772600156564
+        }
+      ]
+    ],
+    [
+      "tampilkan daftar kekayaan intelektual",
+      [
+        {
+          "sql": "SELECT * FROM kekayaan_intelektual LIMIT 10 OFFSET 0\n```",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '```' at line 2",
+          "timestamp": 1772600267211
+        }
+      ]
+    ],
+    [
+      "tampilkan daftar kekayaan intelektual tahun 2019",
+      [
+        {
+          "sql": "SELECT * FROM kekayaan_intelektual WHERE YEAR(tgl_pendaftaran) = 2019 LIMIT 10 OFFSET 0\n```",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '```' at line 2",
+          "timestamp": 1772600519321
+        }
+      ]
+    ],
+    [
+      "tampilkan daftar paten",
+      [
+        {
+          "sql": "SELECT * FROM kekayaan_intelektual WHERE jenis_ki = 'Paten' LIMIT 10 OFFSET 0\n```",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '```' at line 2",
+          "timestamp": 1772600562451
+        }
+      ]
+    ],
+    [
+      "ada berapa jenis kekayaan intelektual",
+      [
+        {
+          "sql": "SELECT COUNT(DISTINCT jenis_ki) AS tkt FROM kekayaan_intelektual\n```",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '```' at line 2",
+          "timestamp": 1772600875242
+        }
+      ]
+    ],
+    [
+      "tampilkan informasi tentang anggota dan hobi di database ujicoba",
+      [
+        {
+          "sql": "SELECT a.*, b.nama FROM anggota a LEFT JOIN hobi b ON a.id = b.anggota_id LIMIT 10 OFFSET 0",
+          "error": "Unknown column 'b.nama' in 'field list'",
+          "timestamp": 1772924894991
+        }
+      ]
+    ],
+    [
+      "daftar ki harry pragoya ya",
+      [
+        {
+          "sql": "SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%harry pragoya%' LIMIT 10 OFFSET 0\n**Penjelasan Query:**\n1. **Pencarian Inventor:** Menggunakan `LIKE '%harry pragoya%'` di kolom `inventor` untuk menemukan semua KI yang melibatkan \"Harry Pragoya\" (case-insensitive karena MySQL default collati",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '**Penjelasan Qu",
+          "timestamp": 1773040178131
+        }
+      ]
+    ],
+    [
+      "berapa jumlah data perkembangan pendaftaran ki dari tahun 2017 sampai 2021?",
+      [
+        {
+          "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE tgl_pendaftaran BETWEEN '2017-01-01' AND '2021-12-31",
+          "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''2021-12-31' at",
+          "timestamp": 1773041156694
+        }
+      ]
+    ]
+  ],
+  "lastSaved": 1773041156695
+}

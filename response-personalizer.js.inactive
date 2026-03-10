@@ -1,0 +1,127 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// RESPONSE PERSONALIZER
+// Personalisasi respons berdasarkan user preference & learning
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const learningSystem = require('./learning-system-v2');
+
+/**
+ * 🎨 PERSONALIZE RESPONSE
+ */
+function personalizeResponse(response, userId, context) {
+  const stats = learningSystem.getUserStats(userId);
+  let personalized = response;
+  
+  // Add confidence score if available
+  if (context.confidence) {
+    const confidencePercent = (context.confidence * 100).toFixed(0);
+    if (context.confidence >= 0.9) {
+      personalized += `\n\n✅ Confidence: ${confidencePercent}% (Sangat yakin)`;
+    } else if (context.confidence >= 0.7) {
+      personalized += `\n\n⚠️ Confidence: ${confidencePercent}% (Cukup yakin)`;
+    } else {
+      personalized += `\n\n❓ Confidence: ${confidencePercent}% (Kurang yakin - mohon verifikasi)`;
+    }
+  }
+  
+  // Add proactive suggestions based on learning
+  if (stats.activeShortcuts > 0 && Math.random() > 0.7) {
+    personalized += `\n\n💡 Tip: Kamu punya ${stats.activeShortcuts} shortcut aktif untuk query lebih cepat!`;
+  }
+  
+  return personalized;
+}
+
+/**
+ * 🚀 GENERATE PROACTIVE SUGGESTIONS
+ */
+function generateProactiveSuggestions(userId, currentQuery, lastDatabase) {
+  const stats = learningSystem.getUserStats(userId);
+  const suggestions = [];
+  
+  // Suggest based on current query
+  const q = currentQuery.toLowerCase();
+  
+  if (/(anggota|member)/i.test(q)) {
+    suggestions.push({
+      text: 'Lihat kehadiran anggota',
+      query: `kehadiran ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '📊'
+    });
+    suggestions.push({
+      text: 'Lihat kegiatan terbaru',
+      query: `kegiatan terbaru ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '📅'
+    });
+  } else if (/(kegiatan|acara)/i.test(q)) {
+    suggestions.push({
+      text: 'Siapa yang hadir',
+      query: `kehadiran kegiatan ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '👥'
+    });
+    suggestions.push({
+      text: 'Detail anggota',
+      query: `data anggota ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '📋'
+    });
+  } else if (/(kehadiran|absen)/i.test(q)) {
+    suggestions.push({
+      text: 'Lihat kegiatan',
+      query: `kegiatan ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '📅'
+    });
+    suggestions.push({
+      text: 'Data anggota',
+      query: `data anggota ${lastDatabase?.replace('_db', '').replace(/_/g, ' ') || ''}`,
+      icon: '👤'
+    });
+  }
+  
+  return suggestions;
+}
+
+/**
+ * 📊 ADD CONFIDENCE INDICATOR
+ */
+function addConfidenceIndicator(message, confidence) {
+  if (!confidence) return message;
+  
+  const percent = (confidence * 100).toFixed(0);
+  let indicator = '';
+  
+  if (confidence >= 0.95) {
+    indicator = `\n\n🎯 Confidence: ${percent}% - Sangat yakin dengan hasil ini`;
+  } else if (confidence >= 0.85) {
+    indicator = `\n\n✅ Confidence: ${percent}% - Yakin dengan hasil ini`;
+  } else if (confidence >= 0.70) {
+    indicator = `\n\n⚠️ Confidence: ${percent}% - Cukup yakin, mohon verifikasi`;
+  } else if (confidence >= 0.50) {
+    indicator = `\n\n❓ Confidence: ${percent}% - Kurang yakin, hasil mungkin tidak akurat`;
+  } else {
+    indicator = `\n\n⚠️ Confidence: ${percent}% - Sangat tidak yakin, mohon cek manual`;
+  }
+  
+  return message + indicator;
+}
+
+/**
+ * 💬 FORMAT SUGGESTIONS
+ */
+function formatSuggestions(suggestions) {
+  if (!suggestions || suggestions.length === 0) return '';
+  
+  let formatted = '\n\n💡 Saran query berikutnya:\n';
+  suggestions.forEach((s, i) => {
+    formatted += `${i + 1}. ${s.icon} ${s.text}\n`;
+  });
+  formatted += '\nKetik nomor atau query langsung!';
+  
+  return formatted;
+}
+
+module.exports = {
+  personalizeResponse,
+  generateProactiveSuggestions,
+  addConfidenceIndicator,
+  formatSuggestions
+};

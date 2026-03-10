@@ -1,0 +1,1071 @@
+{
+  "queries": [
+    {
+      "query": "saya mau nanya tentang ki",
+      "database": "itb",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1708704000000,
+      "lastUsed": 1708704000000
+    },
+    {
+      "query": "paten",
+      "database": "itb",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1708704000000,
+      "lastUsed": 1708704000000
+    },
+    {
+      "query": "hak cipta",
+      "database": "itb",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1708704000000,
+      "lastUsed": 1708704000000
+    },
+    {
+      "query": "desain industri",
+      "database": "itb",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1708704000000,
+      "lastUsed": 1708704000000
+    },
+    {
+      "query": "ha",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771899649944,
+      "lastUsed": 1771899649944
+    },
+    {
+      "query": "informasi ki",
+      "database": "none",
+      "count": 3,
+      "successCount": 2,
+      "firstSeen": 1771899678889,
+      "lastUsed": 1771919838744
+    },
+    {
+      "query": "siapa nama nama investor di ki",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771900629978,
+      "lastUsed": 1771900629978
+    },
+    {
+      "query": "ada apa saja ki pada 201",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771901181289,
+      "lastUsed": 1771901181289
+    },
+    {
+      "query": "saya mau tau saja ki di bidang paten deh",
+      "database": "unknown",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771901777548,
+      "lastUsed": 1771901777548
+    },
+    {
+      "query": "tampilkan hanya yang tahun 2024 saja",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771901841051,
+      "lastUsed": 1771901841051
+    },
+    {
+      "query": "ada data yg lain nya gk?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771901889277,
+      "lastUsed": 1771901889277
+    },
+    {
+      "query": "tampilkan ki yang gunta",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771902852163,
+      "lastUsed": 1771902852163
+    },
+    {
+      "query": "data ki 2026",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771903418603,
+      "lastUsed": 1771903418603
+    },
+    {
+      "query": "kalau yang tahun 2017??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771903504968,
+      "lastUsed": 1771903504968
+    },
+    {
+      "query": "informasi ki pada tahun 2019",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771904335904,
+      "lastUsed": 1771904335904
+    },
+    {
+      "query": "berikan saya data nama nama investor ki",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771905413839,
+      "lastUsed": 1771905413839
+    },
+    {
+      "query": "siapa kamu?",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771906303739,
+      "lastUsed": 1771906303739
+    },
+    {
+      "query": "tampilkan data dengan nomer permohonan ec00202263757",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771907388381,
+      "lastUsed": 1771907388381
+    },
+    {
+      "query": "tampilkan ki dengan nomer permohonan ec00202263757",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771908552068,
+      "lastUsed": 1771908552068
+    },
+    {
+      "query": "tampilkan ki dengan nomer permohonan ec0020226757",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771908598792,
+      "lastUsed": 1771908598792
+    },
+    {
+      "query": "dari semua permohonan ki,mana yang paling lama diproses",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771909436381,
+      "lastUsed": 1771909436381
+    },
+    {
+      "query": "jenis ki mana yang sering di tolak??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771909552904,
+      "lastUsed": 1771909552904
+    },
+    {
+      "query": "tampilkan paten yang masih aktif dari itu mana yang belum pernah di lisensi kan? mana yang paling potensial secara nilai ekonomi",
+      "database": "unknown",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915221841,
+      "lastUsed": 1771915221841
+    },
+    {
+      "query": "tampilkan nama dan status nua saja",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915296745,
+      "lastUsed": 1771915296745
+    },
+    {
+      "query": "apakah ada ki yang aktif tapi tidak pernah diperpanjang?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915397072,
+      "lastUsed": 1771915397072
+    },
+    {
+      "query": "hubungan antara jenis ki dan tingkatt persetujuan",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915496081,
+      "lastUsed": 1771915496081
+    },
+    {
+      "query": "ada gk aki yg rawan di tiru???",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915567882,
+      "lastUsed": 1771915567882
+    },
+    {
+      "query": "ki yang status hukumnya tidak jelas??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915660945,
+      "lastUsed": 1771915660945
+    },
+    {
+      "query": "semarkan nama inventor tapi tapi tampilkan statistik nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771915768709,
+      "lastUsed": 1771915768709
+    },
+    {
+      "query": "mana yang paling relevan dengan kebutuhan industri saat ini?",
+      "database": "itb_db",
+      "count": 2,
+      "successCount": 1,
+      "firstSeen": 1771915861644,
+      "lastUsed": 1771918111306
+    },
+    {
+      "query": "ki apa yang paling dominan tapi tingkat pemanfaatannya rendah?",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917611108,
+      "lastUsed": 1771917611108
+    },
+    {
+      "query": "dari semua permohonan ki, mana yang paling lama diproses dan kenapa?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917617926,
+      "lastUsed": 1771917617926
+    },
+    {
+      "query": "ada tren kenaikan atau penurunan pengajuan ki dari tahun ke tahun?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917633460,
+      "lastUsed": 1771917633460
+    },
+    {
+      "query": "jenis ki mana yang paling sering ditolak?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917649661,
+      "lastUsed": 1771917649661
+    },
+    {
+      "query": "ki mana yang berpotensi dikomersialisasikan tapi belum dimanfaatkan?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917676038,
+      "lastUsed": 1771917676038
+    },
+    {
+      "query": "tampilkan paten yang masih aktif",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917692224,
+      "lastUsed": 1771917692224
+    },
+    {
+      "query": "dari itu, mana yang belum pernah dilisensikan?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917710359,
+      "lastUsed": 1771917710359
+    },
+    {
+      "query": "mana yang paling potensial secara nilai ekonomi?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917729454,
+      "lastUsed": 1771917729454
+    },
+    {
+      "query": "ki mana yang terlihat 'mati suri'?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917775078,
+      "lastUsed": 1771917775078
+    },
+    {
+      "query": "ada ki yang aktif tapi tidak pernah diperpanjang?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917788387,
+      "lastUsed": 1771917788387
+    },
+    {
+      "query": "mana ki yang pemiliknya produktif tapi kualitasnya rendah?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917810222,
+      "lastUsed": 1771917810222
+    },
+    {
+      "query": "apakah ada indikasi pendaftaran ki hanya untuk formalitas?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917822534,
+      "lastUsed": 1771917822534
+    },
+    {
+      "query": "pemilik ki dengan jumlah paten terbanyak tapi tanpa komersialisasi",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917835286,
+      "lastUsed": 1771917835286
+    },
+    {
+      "query": "inventor aktif tapi tidak pernah jadi pemegang hak",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917848468,
+      "lastUsed": 1771917848468
+    },
+    {
+      "query": "ki yang sering diajukan ulang dengan judul mirip",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917865336,
+      "lastUsed": 1771917865336
+    },
+    {
+      "query": "hubungan antara jenis ki dan tingkat persetujuan",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917880890,
+      "lastUsed": 1771917880890
+    },
+    {
+      "query": "ki mana yang cuma numpang daftar doang?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917901321,
+      "lastUsed": 1771917901321
+    },
+    {
+      "query": "yang kelihatannya aktif tapi sebenernya nggak kepake?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917914451,
+      "lastUsed": 1771917914451
+    },
+    {
+      "query": "ada nggak ki yang rawan ditiru?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917935982,
+      "lastUsed": 1771917935982
+    },
+    {
+      "query": "mana yang potensial cuan tapi kelewat?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771917957016,
+      "lastUsed": 1771917957016
+    },
+    {
+      "query": "ki mana yang hampir kedaluwarsa tapi belum diperpanjang?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917967848,
+      "lastUsed": 1771917967848
+    },
+    {
+      "query": "ada potensi pelanggaran hak?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771917981598,
+      "lastUsed": 1771917981598
+    },
+    {
+      "query": "ki yang status hukumnya tidak jelas?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771918004876,
+      "lastUsed": 1771918004876
+    },
+    {
+      "query": "tampilkan ringkasan tanpa detail sensitif",
+      "database": "unknown",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771918023898,
+      "lastUsed": 1771918023898
+    },
+    {
+      "query": "jelaskan tanpa menampilkan dokumen asli",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918037652,
+      "lastUsed": 1771918037652
+    },
+    {
+      "query": "berikan data paten rahasia",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918049936,
+      "lastUsed": 1771918049936
+    },
+    {
+      "query": "kalau saya pengambil kebijakan, ki mana yang harus diprioritaskan?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771918069264,
+      "lastUsed": 1771918069264
+    },
+    {
+      "query": "ki apa yang layak didorong ke hilirisasi?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918084423,
+      "lastUsed": 1771918084423
+    },
+    {
+      "query": "bidang apa yang terlalu banyak ki tapi dampaknya kecil?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771918097778,
+      "lastUsed": 1771918097778
+    },
+    {
+      "query": "kenapa jumlah ki disetujui lebih banyak dari yang diajukan?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918124471,
+      "lastUsed": 1771918124471
+    },
+    {
+      "query": "tanggal pengajuan setelah tanggal persetujuan?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918136538,
+      "lastUsed": 1771918136538
+    },
+    {
+      "query": "status aktif tapi masa berlaku habis?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918149400,
+      "lastUsed": 1771918149400
+    },
+    {
+      "query": "tampilkan paten tahun 2023",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918162380,
+      "lastUsed": 1771918162380
+    },
+    {
+      "query": "prediksi ki mana yang akan menang nobel prize",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918171898,
+      "lastUsed": 1771918171898
+    },
+    {
+      "query": "ki yang paling inovatif",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918185834,
+      "lastUsed": 1771918185834
+    },
+    {
+      "query": "apakah ki ini melanggar hukum?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918198066,
+      "lastUsed": 1771918198066
+    },
+    {
+      "query": "jika ki ini mau dijual, apa risikonya?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918211901,
+      "lastUsed": 1771918211901
+    },
+    {
+      "query": "jika tidak diperpanjang, dampaknya apa?",
+      "database": "none",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1771918224514,
+      "lastUsed": 1771918224514
+    },
+    {
+      "query": "jika diplot ke roadmap riset, posisinya di mana?",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771918238632,
+      "lastUsed": 1771918238632
+    },
+    {
+      "query": "saya mau tanya tentang ki",
+      "database": "success",
+      "count": 3,
+      "successCount": 3,
+      "firstSeen": 1771920663515,
+      "lastUsed": 1772165647995
+    },
+    {
+      "query": "total ki paten tahun 2024",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771920742236,
+      "lastUsed": 1771920742236
+    },
+    {
+      "query": "paten tahun 2024",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771920795583,
+      "lastUsed": 1771920795583
+    },
+    {
+      "query": "total paten 2024 ada berapa",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771921108162,
+      "lastUsed": 1771921108162
+    },
+    {
+      "query": "tampilkan total paten",
+      "database": "itb_db",
+      "count": 2,
+      "successCount": 2,
+      "firstSeen": 1771921141052,
+      "lastUsed": 1772113575680
+    },
+    {
+      "query": "saya ingin tanya tentang ki",
+      "database": "success",
+      "count": 3,
+      "successCount": 3,
+      "firstSeen": 1771991310282,
+      "lastUsed": 1772160526707
+    },
+    {
+      "query": "inventor dari fti",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771991517655,
+      "lastUsed": 1771991517655
+    },
+    {
+      "query": "detail robot angklung",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1771991610456,
+      "lastUsed": 1771991610456
+    },
+    {
+      "query": "informasi li",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772110984956,
+      "lastUsed": 1772110984956
+    },
+    {
+      "query": "tampilkan ki dr slamet ibrahim",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772111032085,
+      "lastUsed": 1772111032085
+    },
+    {
+      "query": "paten tahun 2021 ada berapa??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772111076260,
+      "lastUsed": 1772111076260
+    },
+    {
+      "query": "saya ingin paten tahun 2017",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772112877083,
+      "lastUsed": 1772112877083
+    },
+    {
+      "query": "total ki paten 2024",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772113248796,
+      "lastUsed": 1772113248796
+    },
+    {
+      "query": "3",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772113610767,
+      "lastUsed": 1772113610767
+    },
+    {
+      "query": "grafik apa itu??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772113645516,
+      "lastUsed": 1772113645516
+    },
+    {
+      "query": "list kan paten yg status nya sudah disetujui",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772113748281,
+      "lastUsed": 1772113748281
+    },
+    {
+      "query": "tampilkan nama dan investor nya saja",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772113817460,
+      "lastUsed": 1772113817460
+    },
+    {
+      "query": "ada berapa total dosen di ki??",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772114607262,
+      "lastUsed": 1772114607262
+    },
+    {
+      "query": "total dosen ki",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772114887664,
+      "lastUsed": 1772114887664
+    },
+    {
+      "query": "beserta nama nama nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772114932254,
+      "lastUsed": 1772114932254
+    },
+    {
+      "query": "ada berapa total investor",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772115179365,
+      "lastUsed": 1772115179365
+    },
+    {
+      "query": "list kan dengan nama nama nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772115230918,
+      "lastUsed": 1772115230918
+    },
+    {
+      "query": "total investor",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772115743939,
+      "lastUsed": 1772115743939
+    },
+    {
+      "query": "total investorr",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772115776493,
+      "lastUsed": 1772115776493
+    },
+    {
+      "query": "total investor ki",
+      "database": "success",
+      "count": 2,
+      "successCount": 2,
+      "firstSeen": 1772116037543,
+      "lastUsed": 1772116611609
+    },
+    {
+      "query": "nama nama investor ki",
+      "database": "success",
+      "count": 3,
+      "successCount": 3,
+      "firstSeen": 1772117116971,
+      "lastUsed": 1772117603236
+    },
+    {
+      "query": "total paten tersertifikasi tahun 2024",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772159620073,
+      "lastUsed": 1772159620073
+    },
+    {
+      "query": "kalau tahun 2023",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772159650250,
+      "lastUsed": 1772159650250
+    },
+    {
+      "query": "nama nama investor beserta fakultas nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772161075515,
+      "lastUsed": 1772161075515
+    },
+    {
+      "query": "saya ingin tanya seputar ki",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772162884383,
+      "lastUsed": 1772162884383
+    },
+    {
+      "query": "data kekayaan intelektual",
+      "database": "conversation",
+      "count": 1,
+      "successCount": 0,
+      "firstSeen": 1772162936011,
+      "lastUsed": 1772162936011
+    },
+    {
+      "query": "tampilkan jumlah ki",
+      "database": "unknown",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772162989793,
+      "lastUsed": 1772162989793
+    },
+    {
+      "query": "ada berapa jumlah ki?? dan investor",
+      "database": "success",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772163444595,
+      "lastUsed": 1772163444595
+    },
+    {
+      "query": "dengan data nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772163496279,
+      "lastUsed": 1772163496279
+    },
+    {
+      "query": "ada berapa ki yg status nya aktif",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772164385368,
+      "lastUsed": 1772164385368
+    },
+    {
+      "query": "tampilkan data",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772164418779,
+      "lastUsed": 1772164418779
+    },
+    {
+      "query": "itu yg aktif saja kan??",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772164482530,
+      "lastUsed": 1772164482530
+    },
+    {
+      "query": "saya mau liat data nya",
+      "database": "itb_db",
+      "count": 1,
+      "successCount": 1,
+      "firstSeen": 1772164528818,
+      "lastUsed": 1772164528818
+    }
+  ],
+  "keywords": [
+    "ki",
+    "kekayaan",
+    "intelektual",
+    "paten",
+    "hak",
+    "cipta",
+    "desain",
+    "industri",
+    "inventor",
+    "judul",
+    "tahun",
+    "pendaftaran",
+    "fakultas",
+    "data",
+    "informasi",
+    "daftar",
+    "total",
+    "tampilkan",
+    "cari",
+    "lihat",
+    "terbaru",
+    "2019",
+    "2020",
+    "2021",
+    "2022",
+    "2023",
+    "2024",
+    "siapa",
+    "nama",
+    "investor",
+    "apa",
+    "saja",
+    "201",
+    "tau",
+    "bidang",
+    "deh",
+    "hanya",
+    "lain",
+    "nya",
+    "gk?",
+    "gunta",
+    "2026",
+    "kalau",
+    "2017??",
+    "berikan",
+    "kamu?",
+    "nomer",
+    "permohonan",
+    "ec00202263757",
+    "ec0020226757",
+    "semua",
+    "ki,mana",
+    "paling",
+    "lama",
+    "diproses",
+    "jenis",
+    "mana",
+    "sering",
+    "tolak??",
+    "masih",
+    "aktif",
+    "belum",
+    "pernah",
+    "lisensi",
+    "kan?",
+    "potensial",
+    "secara",
+    "nilai",
+    "ekonomi",
+    "status",
+    "nua",
+    "apakah",
+    "tapi",
+    "tidak",
+    "diperpanjang?",
+    "hubungan",
+    "antara",
+    "tingkatt",
+    "persetujuan",
+    "aki",
+    "rawan",
+    "tiru???",
+    "hukumnya",
+    "jelas??",
+    "semarkan",
+    "statistik",
+    "relevan",
+    "kebutuhan",
+    "saat",
+    "ini?",
+    "dominan",
+    "tingkat",
+    "pemanfaatannya",
+    "rendah?",
+    "ki,",
+    "kenapa?",
+    "tren",
+    "kenaikan",
+    "penurunan",
+    "pengajuan",
+    "tahun?",
+    "ditolak?",
+    "berpotensi",
+    "dikomersialisasikan",
+    "dimanfaatkan?",
+    "itu,",
+    "dilisensikan?",
+    "ekonomi?",
+    "terlihat",
+    "'mati",
+    "suri'?",
+    "pemiliknya",
+    "produktif",
+    "kualitasnya",
+    "indikasi",
+    "formalitas?",
+    "pemilik",
+    "terbanyak",
+    "tanpa",
+    "komersialisasi",
+    "jadi",
+    "pemegang",
+    "diajukan",
+    "ulang",
+    "mirip",
+    "cuma",
+    "numpang",
+    "doang?",
+    "kelihatannya",
+    "sebenernya",
+    "nggak",
+    "kepake?",
+    "ditiru?",
+    "cuan",
+    "kelewat?",
+    "hampir",
+    "kedaluwarsa",
+    "potensi",
+    "pelanggaran",
+    "hak?",
+    "jelas?",
+    "ringkasan",
+    "detail",
+    "sensitif",
+    "jelaskan",
+    "menampilkan",
+    "dokumen",
+    "asli",
+    "rahasia",
+    "pengambil",
+    "kebijakan,",
+    "harus",
+    "diprioritaskan?",
+    "layak",
+    "didorong",
+    "hilirisasi?",
+    "terlalu",
+    "banyak",
+    "dampaknya",
+    "kecil?",
+    "kenapa",
+    "disetujui",
+    "lebih",
+    "diajukan?",
+    "tanggal",
+    "setelah",
+    "persetujuan?",
+    "masa",
+    "berlaku",
+    "habis?",
+    "prediksi",
+    "akan",
+    "menang",
+    "nobel",
+    "prize",
+    "inovatif",
+    "melanggar",
+    "hukum?",
+    "jika",
+    "dijual,",
+    "risikonya?",
+    "diperpanjang,",
+    "apa?",
+    "diplot",
+    "roadmap",
+    "riset,",
+    "posisinya",
+    "mana?",
+    "tanya",
+    "ingin",
+    "fti",
+    "robot",
+    "angklung",
+    "slamet",
+    "ibrahim",
+    "berapa??",
+    "2017",
+    "grafik",
+    "itu??",
+    "kan",
+    "sudah",
+    "dosen",
+    "ki??",
+    "beserta",
+    "investorr",
+    "tersertifikasi",
+    "seputar",
+    "kan??",
+    "liat"
+  ]
+}
