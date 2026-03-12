@@ -36,9 +36,12 @@ const {
 function debugLog(label, content) {
   try {
     const fs = require('fs');
+    const safeContent = typeof content === 'object' 
+      ? JSON.stringify(content, (k, v) => typeof v === 'bigint' ? v.toString() : v) 
+      : content;
     fs.appendFileSync(
       path.join(__dirname, 'debug_sql_out.txt'),
-      `\n[${new Date().toISOString()}] ${label}: ${typeof content === 'object' ? JSON.stringify(content) : content}`
+      `\n[${new Date().toISOString()}] ${label}: ${safeContent}`
     );
   } catch (e) { }
 }
@@ -52,6 +55,7 @@ class ChatbotHandler {
   async initPhase7() {
     databaseRouter.setAIHandler(this.askAI.bind(this));
     const allConfigs = dbHelper.getAllActiveConnectionConfigs();
+    dbProfiler.setAIHandler(this.askAI.bind(this));
     dbProfiler.profileDatabases(allConfigs).then(() => {
       console.log('🚀 Phase 7: AI-First Agent is ready.');
     });
@@ -70,30 +74,45 @@ class ChatbotHandler {
 
       if (result && result.type === 'answer' && typeof result.message === 'string') {
         const session = contextManager.getSession(userId);
-        const lastEntry = session.getLastEntry();
 
         // Check if we should append recommendations (exclude closing/short thank yous)
         const qTrim = question.trim().toLowerCase();
         const closingKeywords = /\b(cukup|sudah|oke|ok|sip|siap|makasih|terimakasih|thanks|thx|terima kasih|selesai|udahan|bye|dah|sampai jumpa)\b/i;
         const isClosing = (qTrim.length < 30 && closingKeywords.test(qTrim));
 
-        if (!isClosing && !result.message.includes('💡')) {
-          const cat = await this.getDatabaseCatalog();
-          const recs = await this.generateSmartRecommendations(question, cat, this.getContext(userId));
-
-          if (recs) {
-            result.message += `\n\n💡 **Rekomendasi Pertanyaan:**\n${recs}`;
+        if (!isClosing) {
+          // Add tooltip for exports/charts if not already mentioned by AI
+          const hasManyData = (result.data && result.data.length > 1);
+          const hasVisualTip = result.message.includes('📊') || result.message.includes('grafik') || result.message.includes('chart');
+          
+          if (hasManyData && !this.isCountResult(result.data) && !hasVisualTip) {
+            result.message += `\n\n📊 **Tip:** Ketik **"buat grafik"**, **"dashboard"**, **"cetak pdf"**, atau **"download excel"** untuk mengolah data ini.`;
           }
 
-          const hasManyData = (result.data && result.data.length > 1);
-          if (hasManyData && !this.isCountResult(result.data)) {
-            result.message += `\n\n📊 **Tip:** Ketik **"buat grafik"**, **"dashboard"**, **"cetak pdf"**, atau **"download excel"** untuk mengolah data ini.`;
+          // Fallback recommendation ONLY if AI failed to provide one
+          if (!result.message.includes('💡')) {
+            const cat = await this.getDatabaseCatalog();
+            const { text, array } = await this.generateSmartRecommendations(question, cat, this.getContext(userId));
+            if (text) {
+              result.message += `\n\n💡 **Rekomendasi Pertanyaan:**\n${text}`;
+              
+              // STORE Recommendations in the ENTRY WE JUST ADDED
+              const lastEntry = session.getLastEntry();
+              if (lastEntry) {
+                lastEntry.recommendations = array;
+              }
+            }
           }
         }
       }
-      return result;
+      return result || { type: "answer", message: "Maaf, sistem sedang sibuk. Silakan coba sesaat lagi ya!" };
     } catch (err) {
       console.error('Chatbot Error:', err);
+      debugLog('CRITICAL_ERROR', { 
+        message: err.message, 
+        stack: err.stack,
+        question: question 
+      });
       return { type: "answer", message: `Maaf, terjadi kesalahan teknik. Silakan coba lagi.` };
     }
   }
@@ -106,13 +125,55 @@ class ChatbotHandler {
     const context = session.conversationHistory;
     const lastEntry = session.getLastEntry();
 
+    // 1.0.1 HANDLE RECOMMENDATION SELECTION BY NUMBER
+    let recs = lastEntry?.recommendations;
+    
+    // Failover: if metadata is missing but assistant message has list, extract it (SAFE CHECK)
+    const lastContent = String(lastEntry?.content || '');
+    if (!recs && lastEntry?.role === 'assistant' && lastContent.includes('💡')) {
+      try {
+        const parts = lastContent.split('💡');
+        if (parts.length > 1) {
+          const listLines = parts[1].split('\n').filter(l => /^\d+\./.test(l.trim()));
+          recs = listLines.map(l => l.replace(/^\d+\.\s*/, '').trim());
+        }
+      } catch (err) {
+        debugLog('REC_EXTRACTION_FAILED', err.message);
+      }
+    }
+
+    if (recs && recs.length > 0) {
+      const match = q.match(/^\b([123])\b\s*(?:ya|oke|ok|gas|lanjut|siap|coba|dong|y)?\s*$/i);
+      if (match) {
+        const idx = parseInt(match[1]) - 1;
+        const selectedRec = recs[idx];
+        if (selectedRec) {
+          debugLog('RECOMMENDATION_EXECUTED', selectedRec);
+          q = selectedRec;
+        }
+      }
+    }
+
     // ════════════════════════════════════════════════════════════════
     // STEP 1: AI-FIRST UNDERSTANDING (Phase 7 Agentic)
     // ════════════════════════════════════════════════════════════════
     if (progressCallback) progressCallback('Memahami maksud Anda...');
-    const contextStr = this.buildConversationContext(context);
-    const understanding = await ragPipeline.understand(q, contextStr, lastEntry);
+    
+    // Inject "Last Assistant Offer" into context to help AI with affirmations (ya/gas/siap)
+    let contextStr = this.buildConversationContext(context);
+    if (lastEntry?.pendingOffer) {
+      contextStr += `\n(Konteks: Asisten baru saja menawarkan: ${lastEntry.pendingOffer})`;
+    }
+
+    const qLower = q.toLowerCase();
+    let understanding = await ragPipeline.understand(q, contextStr, lastEntry);
     debugLog('AI_UNDERSTANDING', understanding);
+
+    // 1.0 PROACTIVE CONFIRMATION (Catch obvious flows even if AI missed intent)
+    if (lastEntry?.pendingOffer && /(tampilkan|lihat|liat|mana|ok|boleh|gas|tampil|iya)\b/i.test(qLower) && understanding?.intent !== 'CONFIRMATION') {
+        debugLog('PROACTIVE_CONFIRM_ENFORCED', lastEntry.pendingOffer);
+        understanding = { intent: 'CONFIRMATION', value: true, confidence: 0.99 };
+    }
 
     if (!understanding) return { type: "answer", message: "Maaf, saya gagal memahami pertanyaan Anda." };
 
@@ -122,6 +183,48 @@ class ChatbotHandler {
       this.addToContext(userId, "user", q);
       this.addToContext(userId, "assistant", msg);
       return { type: "answer", message: msg };
+    }
+
+    // 1.5 Handle CONFIRMATION (Follow up after Count/Summary)
+    if (understanding.intent === 'CONFIRMATION') {
+      const offerType = lastEntry?.pendingOffer;
+      // If user says YES/LIATKAN to an offer or to a previous search summary
+      const isSearchSummary = lastEntry?.role === 'assistant' && lastEntry.content.includes('Ditemukan') && lastEntry.lastData;
+      
+      if (understanding.value === true && (offerType === "MENAMPILKAN_DATA_LENGKAP" || offerType === "ANALISIS_DATA_ATAU_GRAFIK" || isSearchSummary) && lastEntry.lastSqlQuery) {
+        debugLog('CONFIRM_YES_TRIGGERED', 'Expanding or showing data');
+        
+        let detailSql = lastEntry.lastSqlQuery;
+        // Transform COUNT to SELECT * 
+        if (lastEntry.wasCountQuery) {
+            // More robust replacement for COUNT(*) to SELECT *
+            detailSql = detailSql
+              .replace(/SELECT\s+COUNT\(.*?\)(\s+AS\s+\w+)?/i, 'SELECT *')
+              .replace(/LIMIT\s+\d+/i, 'LIMIT 10'); 
+        }
+        
+        // If it was already SELECT * but summarized, we force listing
+        const forceList = !lastEntry.wasCountQuery;
+
+        if (!detailSql.toUpperCase().includes('LIMIT')) {
+          detailSql += " LIMIT 10 OFFSET 0";
+        }
+        
+        understanding.intent = 'DATABASE_QUERY';
+        understanding.sql = detailSql;
+        understanding.targetDb = lastEntry.lastDatabase;
+        understanding.forceList = forceList; // Special hint for generation
+      } else if (understanding.value === false) {
+        const msg = "Baik, Mas/Mbak. Ada hal lain yang bisa saya bantu?";
+        this.addToContext(userId, "user", q);
+        this.addToContext(userId, "assistant", msg);
+        return { type: "answer", message: msg };
+      } else {
+        // Fallback to AI if confirmation not clear or no context
+        const contextStr = this.buildConversationContext(context);
+        const aiRetry = await ragPipeline.understand(q + " (konteks: " + (lastEntry?.lastQuestion || "") + ")", contextStr, lastEntry);
+        if (aiRetry && aiRetry.intent !== 'AMBIGUOUS') Object.assign(understanding, aiRetry);
+      }
     }
 
     // 2. Handle COMMAND (Export, Chart, Dashboard, Pagination)
@@ -162,14 +265,56 @@ class ChatbotHandler {
 
     // 3. Handle DATABASE_QUERY
     if (understanding.intent === 'DATABASE_QUERY' || (understanding.sql && understanding.sql.length > 10)) {
-      const targetDb = understanding.targetDb || lastEntry?.lastDatabase;
-      if (!targetDb) return await this.handleDatabaseList(userId);
+      let targetDb = understanding.targetDb || lastEntry?.lastDatabase || 'itb_db';
+      
+      // AUTO_DETECT resolution
+      if (targetDb === 'AUTO_DETECT' || understanding.database_hint === 'AUTO_DETECT') {
+        const activeDbs = dbHelper.getActiveDatabases();
+        targetDb = activeDbs[0] || 'itb_db'; // Default to first active
+        
+        // Smarter: Look for date column if year is present
+        if (understanding.entities?.year) {
+          for (const db of activeDbs) {
+            const schema = schemaCache[db];
+            if (schema) {
+              const hasDateCol = Object.values(schema).some(t => 
+                t.columns.toLowerCase().includes('tgl') || 
+                t.columns.toLowerCase().includes('tahun') || 
+                t.columns.toLowerCase().includes('tanggal')
+              );
+              if (hasDateCol) {
+                targetDb = db;
+                break;
+              }
+            }
+          }
+        }
+      }
 
       if (progressCallback) progressCallback('Mencari data...');
-      const retrieval = await ragPipeline.retrieve(understanding.sql, targetDb);
+      
+      // Pass the original query to retrieve for caching
+      let retrieval = await ragPipeline.retrieve(understanding.sql, targetDb, q);
+
+      // FAIL-SAFE RETRY: If quick regex query fails, try again with full AI brain
+      if (retrieval.error && understanding.is_quick) {
+        debugLog('RETRIEVE_QUICK_FAIL_RETRY', { error: retrieval.error, query: q });
+        if (progressCallback) progressCallback('Memvalidasi maksud (AI Retry)...');
+        
+        const contextStr = this.buildConversationContext(context);
+        const aiRetry = await ragPipeline.understand(q, contextStr, lastEntry);
+        
+        if (aiRetry && aiRetry.sql) {
+            debugLog('RETRY_SUCCESS_GEN_SQL', aiRetry.sql);
+            understanding = { ...understanding, ...aiRetry, is_quick: false };
+            targetDb = understanding.targetDb || lastEntry?.lastDatabase || 'itb_db';
+            retrieval = await ragPipeline.retrieve(understanding.sql, targetDb, q);
+        }
+      }
 
       if (retrieval.error) {
-        debugLog('RETRIEVE_FAIL', retrieval.error);
+        debugLog('RETRIEVE_FAIL_FINAL', retrieval.error);
+        learningV2.learnFromError(userId, q, targetDb, 'DATABASE_ERROR', retrieval.error);
       }
 
       if (progressCallback) progressCallback('Menyusun jawaban...');
@@ -182,26 +327,54 @@ class ChatbotHandler {
         displayTotal = retrieval.data.reduce((sum, row) => sum + (Number(row[valCol]) || 0), 0);
       }
 
-      const naturalResponse = await ragPipeline.generate(q, retrieval.data, displayTotal, targetDb, lastEntry);
+      const naturalResponse = await ragPipeline.generate(q, retrieval.data, displayTotal, targetDb, lastEntry, {
+        forceList: understanding.forceList
+      });
 
       const finalMsg = this.stripPromptLeak(naturalResponse);
+      const isCount = this.isCountResult(retrieval.data);
+      
       this.addToContext(userId, "user", q);
       this.addToContext(userId, "assistant", finalMsg, {
         lastDatabase: targetDb,
         lastQuestion: q,
         originalQuestion: understanding.transformed_query || q,
         lastOffset: 0,
-        lastTotal: retrieval.total,
+        lastTotal: isCount ? 1 : retrieval.total,
         lastSqlQuery: understanding.sql,
         lastData: retrieval.data,
         lastDataIsGroup: isGroup,
-        lastGrandTotal: displayTotal
+        wasCountQuery: isCount,
+        lastGrandTotal: displayTotal,
+        pendingOffer: isCount ? "MENAMPILKAN_DATA_LENGKAP" : (retrieval.total > 1 ? "ANALISIS_DATA_ATAU_GRAFIK" : null)
       });
+
+      // 🧠 Stage: Learning (Long Term Memory)
+      if (retrieval.data && retrieval.data.length > 0) {
+        learningV2.learnFromQuery({
+          userId,
+          userQuery: q,
+          database: targetDb,
+          intent: understanding.intent,
+          resultCount: retrieval.total,
+          executionTime: Date.now() - (lastEntry?.timestamp || Date.now()) // Approx
+        });
+      }
 
       return { type: "answer", message: finalMsg, data: retrieval.data };
     }
 
-    return { type: "answer", message: "Maaf, saya bingung. Coba tanya dengan kalimat lain ya!" };
+    // 4. LAST RESORT FALLBACK: If nothing caught it, try AI one last time with simple context
+    const fallbackPrompt = `User berkata: "${q}". Ini adalah bagian dari percakapan tapi sistem gagal mengklasifikasi maksudnya secara teknis. 
+    Tolong berikan balasan yang ramah dan tawarkan bantuan terkait data Kekayaan Intelektual atau Database ITB.
+    Jangan menjawab dengan bahasa teknis.`;
+    
+    const finalFallback = await this.askAI(fallbackPrompt);
+    const fallbackMsg = finalFallback || "Ada yang bisa saya bantu terkait data Kekayaan Intelektual atau informasi lainnya? 😊";
+    
+    this.addToContext(userId, "user", q);
+    this.addToContext(userId, "assistant", fallbackMsg);
+    return { type: "answer", message: fallbackMsg };
   }
 
   buildConversationContext(history) {
@@ -220,6 +393,8 @@ class ChatbotHandler {
     if (!userId || userId === 'default' || longTermHistoryFetched.has(userId)) return;
     try {
       debugLog('SYNC_HISTORY', `Fetching history for ${userId}`);
+      
+      // Safety check: is history database reachable?
       const [chats] = await historyPool.execute(`
         SELECT id FROM riwayat_chat 
         WHERE user_email = ? 
@@ -242,13 +417,18 @@ class ChatbotHandler {
 
       if (messages && messages.length > 0) {
         const history = messages.map(msg => ({
-          role: msg.peran, content: msg.konten, timestamp: new Date(msg.dibuat_pada).getTime()
+          role: msg.peran, 
+          content: msg.konten || '', // Safe default
+          timestamp: new Date(msg.dibuat_pada).getTime()
         }));
         const session = contextManager.getSession(userId);
         session.conversationHistory = history;
       }
       longTermHistoryFetched.add(userId);
-    } catch (err) { console.error('Sync Error:', err); }
+    } catch (err) { 
+      console.warn('Sync History disabled for this session due to error:', err.message);
+      longTermHistoryFetched.add(userId); // Mark as fetched to stop retrying if table doesn't exist
+    }
   }
 
   async getDatabaseCatalog() {
@@ -313,38 +493,55 @@ class ChatbotHandler {
         res = await axios.post(api.url, {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: temp }
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
+        }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
         return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
       } else {
         res = await axios.post(api.url, {
           model: api.model,
           messages: [{ role: "user", content: prompt }],
           temperature: temp
-        }, { headers: { Authorization: `Bearer ${api.key}` }, timeout: 30000 });
+        }, { headers: { Authorization: `Bearer ${api.key}` }, timeout: 10000 });
         return res.data?.choices?.[0]?.message?.content || null;
       }
     } catch (e) {
       debugLog(`AI_ERROR[${api.name}]`, e.message);
-      if (retry < 1) return this.askAI(prompt, retry + 1, idx, temp);
+      // Faster failover: no retry for same index, just move to next provider
       return this.askAI(prompt, 0, idx + 1, temp);
     }
   }
 
   stripPromptLeak(text) {
     if (!text || typeof text !== 'string') return text || '';
-    return text.replace(/^(Berikut adalah|Tentu|Silakan).*?:\s*/gi, '').trim();
+    // Strip common system headers and meta-instructions that might leak
+    let cleaned = text.replace(/^(Asisten|AI|Sistem|Berikut|Tentu|Baik|Daftar Lengkap|Struktur Jawaban|Instruksi|Template)(.*?)?:\s*/gi, '').trim();
+    
+    // Also remove AI "thinking" prefixes if they leak
+    cleaned = cleaned.replace(/^Sure, here is the list:|^Tentu, ini datanya:|^Ok, let me look that up:|^Berikut daftar/gi, '').trim();
+    
+    // Remove common placeholder artifacts
+    cleaned = cleaned.replace(/\[Nilai\]/g, '-').replace(/\[JUDUL.*?\]/g, '').replace(/\[IDENTITAS\/NAMA\]/g, '-');
+    
+    return cleaned || text; 
   }
 
   isCountResult(data) {
     if (!data || data.length !== 1) return false;
     const keys = Object.keys(data[0]);
-    return keys.some(k => ['total', 'jumlah', 'count'].includes(k.toLowerCase()));
+    // Expand to handle COUNT(*), count(1), etc.
+    return keys.some(k => 
+      ['total', 'jumlah', 'count'].includes(k.toLowerCase()) || 
+      k.toLowerCase().includes('count(') || 
+      k.toLowerCase().includes('total(')
+    );
   }
 
   isGroupByResult(data) {
     if (!data || data.length < 1) return false;
     const keys = Object.keys(data[0]);
-    return keys.length === 2 && keys.some(k => ['total', 'jumlah', 'count'].includes(k.toLowerCase()));
+    return keys.length >= 2 && keys.some(k => 
+      ['total', 'jumlah', 'count'].includes(k.toLowerCase()) || 
+      k.toLowerCase().includes('count(')
+    );
   }
 
   async handleDatabaseList(userId) {
@@ -357,29 +554,56 @@ class ChatbotHandler {
 
   async generateSmartRecommendations(q, cat, context) {
     try {
-      const history = context?.conversationHistory || [];
-      const prompt = `Berdasarkan database yang tersedia dan percakapan terakhir, berikan 3 pertanyaan singkat (maks 6 kata) yang relevan untuk ditanyakan oleh user.
+      const lastEntry = context?.getLastEntry?.();
+      const currentDb = lastEntry?.lastDatabase || 'itb_db';
+      const profiles = dbProfiler.getProfiles();
+      const currentProfile = profiles[currentDb];
       
-DATA DATABASE:
-${cat.summary || 'Kekayaan Intelektual, Anggota Ujicoba'}
+      let dbSummary = cat.summary || 'Kekayaan Intelektual ITB';
+      if (currentProfile) {
+        const insights = currentProfile.insights;
+        dbSummary = `Fokus pada Database: ${currentDb}. 
+        Topik Utama: ${insights?.topic || 'Data Operasional'}.
+        Poin Analitik: ${(insights?.analytic_points || []).join(', ')}.
+        Contoh Pertanyaan yang Mungkin: ${(insights?.typical_questions || []).join(', ')}.`;
+      }
+
+      const prompt = `Berdasarkan database yang tersedia, berikan 3 pertanyaan pendek (maks 6 kata) yang paling relevan untuk ditanyakan user selanjutnya berdasarkan "Database Insights" di bawah.
+      
+DATA DATABASE & INSIGHTS:
+${dbSummary}
 
 PERCAKAPAN TERAKHIR:
-User bertanya: "${q}"
+User bertanya sekarang: "${q}"
+${lastEntry?.lastQuestion ? `Sebelumnya: "${lastEntry.lastQuestion}"` : ''}
 
 INSTRUKSI:
 1. Jawab HANYA list 1, 2, 3 saja. 
-2. Pastikan pertanyaan nyata (bisa dijawab SQL).
-3. Buat variatif (misal 1 tentang jumlah, 1 tentang filtering, 1 tentang pencarian nama).
+2. Prioritaskan pertanyaan yang ada di "typical_questions" jika relevan dengan topik "${q}".
+3. Sesuaikan dengan topik terakhir.
+4. Gunakan Bahasa Indonesia yang natural.
 
-Jawab sekarang:`;
+Format: 1. [Pertanyaan]\n2. [Pertanyaan]\n3. [Pertanyaan]`;
 
       const aiRes = await this.askAI(prompt, 0, 0, 0.7);
-      if (aiRes) return aiRes.trim();
-
-      // Fallback tetap aman
-      return "1. Apa saja jenis KI yang tersedia?\n2. Siapa inventor dari FTI?\n3. Berapa total pendaftaran tahun 2024?";
+      if (aiRes && aiRes.length > 5) {
+        const lines = aiRes.split('\n').map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(l => l.length > 2);
+        const formatted = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
+        return { text: formatted, array: lines.slice(0, 3) };
+      }
+      // Fallback cerdas berdasarkan DB terakhir
+      if (currentDb === 'itb_db') {
+        const lines = ["Apa saja jenis KI yang tersedia?", "Siapa inventor dari FTI?", "Berapa total pendaftaran tahun 2024?"];
+        const formatted = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
+        return { text: formatted, array: lines };
+      }
+      const lines = ["Siapa saja anggota yang hadir?", "Apa hobi yang paling populer?", "Tampilkan daftar anggota terbaru."];
+      const formatted = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
+      return { text: formatted, array: lines };
     } catch (e) {
-      return "1. Apa saja hobi anggota?\n2. Kapan pendaftaran terbaru?\n3. Berapa total data?";
+      const lines = ["Tampilkan data terbaru", "Berapa total data keseluruhan?", "Cari data berdasarkan tahun"];
+      const formatted = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
+      return { text: formatted, array: lines };
     }
   }
 

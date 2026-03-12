@@ -23,19 +23,22 @@ class AIOrchestrator {
             SELECT_NUMBER: /^(?:detail\s+)?(\d+)$|^(?:no\.?\s*|nomor\s*)(\d+)$/i,
         };
 
-        this.CONFIRM_YES = /^(ya+|iya+|yaps?|y|mau|boleh|silakan|gas|tampilkan|lihat|liat|liatkan|liatin|show|tunjukin|kasih liat|ok|oke|okey|sip|dong|daftar|list|mana saja|apa saja|namanya)\b/i;
-        this.CONFIRM_NO = /^(tidak|nggak|gak|no|nope|ga|enggak|ndak|tdk|jangan|skip)\b/i;
+        this.CONFIRM_YES = /(?:^|\b)(?:ya+|iya+|yaps?|y|mau|boleh|silakan|gas|tampilkan|lihat|liat|liatkan|liatin|show|tunjukin|kasih liat|ok|oke|okey|sip|siap|dong|daftar|list|mana saja|apa saja|namanya|lanjut|lakukan|tampil)\b/i;
+        this.CONFIRM_NO = /(?:^|\b)(?:tidak|nggak|gak|no|nope|ga|enggak|ndak|tdk|jangan|skip)\b/i;
+        
+        // Safety: ensure common name words aren't blocked
+        this.NAME_PRESERVE = /\b(pekik|argo|endar|agus|budi)\b/i;
 
         // Perintah grafik/export — tetap regex karena 100% pasti
         this.CHART_CMD = /\b(grafik(?:nya)?|diagram(?:nya)?|chart(?:nya)?|buatkan\s+grafik|bikin\s+grafik|tampilkan\s+grafik|buat\s+grafik|bikin\s+diagram|buatkan\s+diagram|jadikan\s+(?:grafik|grafil|gravis|grafic|graph))\b/i;
         this.EXPORT_CMD = /\b(export|unduh|download|csv|excel|ekspor|exel|xls|xlsx|jadikan\s+(?:exel|excel|escel|eksel|xs|xsl|xlsx))\b/i;
         this.EXPORT_PDF_CMD = /\b(pdf|pdh|pfd|buatkan\s+pdf|export\s+pdf|download\s+pdf|bikin\s+pdf|cetak\s+pdf|unduh\s+pdf|jadikan\s+(?:pdf|pdh|pfd)|jadiin\s+(?:pdf|pdh|pfd))\b/i;
-        this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|dashbod(?:nya)?|desbor[dt]?(?:nya)?|visualisasi\s+interaktif|buka\s+(?:dashboard|dashbod|desbor[dt]?)|buatkan\s+(?:dashboard|dashbod|desbor[dt]?)|tampilkan\s+(?:dashboard|dashbod|desbor[dt]?))\b/i;
+        this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|dashbod(?:nya)?|desbor[dt]?(?:nya)?|visualisasi\s+interaktif|buka\s+(?:dashboard|dashbod|desbor[dt]?)|buatkan\s+(?:dashboard|dashbod|desbor[dt]?)|tampilkan\s+(?:dashboard|dashbod|desbor[dt]?)|jadikan\s+(?:dashboard|dashbod|desbor[dt]?))\b/i;
 
-        // Sapaan murni — cepat tanpa AI
-        this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey)$/i;
-        this.THANKS = /^(terima kasih|makasih|thanks|thank you|thx|ok(e)? (makasih|terima kasih)|sip (makasih|terima kasih)?)$/i;
-        this.GOODBYE = /^(sampai jumpa|bye|dadah|selamat tinggal|pamit)$/i;
+        // Sapaan murni — cepat tanpa AI (Toleran tanda baca)
+        this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey|salam|pagi|siang|malam|halo(.*)bot)[.?!\s]*$/i;
+        this.THANKS = /^(terima kasih|makasih|thanks|thank you|thx|ok(e)? (makasih|terima kasih)|sip (makasih|terima kasih)?|siap|siap terimaksih|siap terimakasih|siap (makasih|terimakasih|terima kasih)|okee|oke siap|yoi|oke terimakasih|ok siap|oke siap|siap bosque|mantap|ok mantap|sip mantap)[.?!\s]*$/i;
+        this.GOODBYE = /^(sampai jumpa|bye|dadah|selamat tinggal|pamit|udahan|cukup|dah)[.?!\s]*$/i;
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -65,7 +68,7 @@ class AIOrchestrator {
 
         // === KONFIRMASI (Ya/Tidak) — hanya jika awaiting ===
         const lastEntry = session?.getLastEntry?.() || session;
-        const isAwaitingConfirm = lastEntry?.pendingDataDisplay || lastEntry?.wasCountQuery || session?.awaitingConfirmation;
+        const isAwaitingConfirm = lastEntry?.pendingDataDisplay || lastEntry?.wasCountQuery || session?.awaitingConfirmation || lastEntry?.pendingOffer;
         if (isAwaitingConfirm) {
             if (this.CONFIRM_YES.test(qLower)) {
                 return { intent: 'CONFIRMATION', value: true, confidence: 0.98 };
@@ -108,55 +111,125 @@ class AIOrchestrator {
             return { intent: 'COMMAND', command: 'EXPORT', confidence: 0.95 };
         }
 
-        // Tidak cocok → serahkan ke AI
+        // Catch-all for short confirmations like "ya", "tampilkan", "liatkan"
+        if (qLower.length < 25 && this.CONFIRM_YES.test(qLower)) {
+            return { intent: 'CONFIRMATION', value: true, confidence: 0.90 };
+        }
+
+        // Pattern: "ki 2024", "data ki 2016", "coba yang 2021 deh", "tahun 2020", "ada berapa 2006"
+        const yearPattern = /(?:\b(ki|paten|hak cipta|merek|data)\b)?.*?\b(20\d{2}|19\d{2})\b/i;
+        const yearMatch = qLower.match(yearPattern);
+        
+        const hasCountWord = /\b(berapa|total|jumlah|banyak)\b/i.test(qLower);
+        const hasSubject = !!yearMatch?.[1];
+        const isShortYear = /^\d{4}$/.test(qLower);
+        const hasHelper = /\b(yang|coba|deh|tahun|thn)\b/i.test(qLower);
+
+        if (yearMatch && (hasSubject || isShortYear || hasHelper)) {
+            const subject = yearMatch[1]?.toLowerCase() || 'data';
+            const year = yearMatch[2];
+            const selectClause = hasCountWord ? "SELECT COUNT(*) AS total" : "SELECT *";
+            
+            let whereClause = `(tgl_pendaftaran LIKE '%${year}%')`;
+            if (subject.includes('paten')) whereClause = `jenis_ki LIKE '%Paten%' AND (tgl_pendaftaran LIKE '%${year}%')`;
+            if (subject.includes('hak cipta')) whereClause = `jenis_ki LIKE '%Hak Cipta%' AND (tgl_pendaftaran LIKE '%${year}%')`;
+
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'itb_db', 
+                sql: `${selectClause} FROM kekayaan_intelektual WHERE ${whereClause} LIMIT 10 OFFSET 0`,
+                confidence: 0.85,
+                entities: { year, subject, isCount: hasCountWord },
+                action: 'DATABASE_QUERY',
+                targetDb: 'itb_db'
+            };
+        }
+
         return null;
     }
 
     // ════════════════════════════════════════════════════════════════
     // AI CLASSIFY + SQL — Satu panggilan AI untuk semuanya
-    // 
-    // Mengembalikan:
-    // {
-    //   intent: "DATABASE_QUERY" | "FOLLOW_UP" | "CONVERSATION" | "AMBIGUOUS",
-    //   sql: "SELECT ..." | null,
-    //   database_hint: "kekayaan_intelektual_db" | null,
-    //   natural_response: "..." | null,  (untuk CONVERSATION)
-    //   entities: { jenis_ki, tahun, fakultas, inventor, ... },
-    //   transformed_query: "..." | null
-    // }
     // ════════════════════════════════════════════════════════════════
     buildUnifiedPrompt(userInput, schemaInfo, conversationContext, dbCatalogSummary, lastEntry) {
-        // Build schema section (compact)
+        // Load System Grounding (Stats from api-databases.json for extreme accuracy)
+        let sysStats = "";
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const statsPath = path.join(__dirname, '..', 'api-databases.json');
+            if (fs.existsSync(statsPath)) {
+                const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
+                sysStats = stats.map(s => `- Database ${s.name}: Berisi ${s.records} data (terakhir diperbarui ${s.importedAt})`).join('\n');
+            }
+        } catch (e) {}
+
         let schemaSection = '';
         if (schemaInfo && Object.keys(schemaInfo).length > 0) {
             const schemas = [];
             for (const [dbName, tables] of Object.entries(schemaInfo)) {
                 const tableDescs = Object.entries(tables).map(([tName, tInfo]) => {
                     const sampleRow = tInfo.sample_rows?.[0] || {};
-                    return `  Tabel: ${tName}\n  Kolom: ${tInfo.columns}\n  Contoh: ${JSON.stringify(sampleRow).substring(0, 200)}`;
+                    const sampleStr = JSON.stringify(sampleRow, (k, v) => typeof v === 'bigint' ? v.toString() : v).substring(0, 300);
+                    return `  Tabel: ${tName}\n  Kolom: ${tInfo.columns}\n  Contoh Data: ${sampleStr}`;
                 }).join('\n');
                 schemas.push(`Database: ${dbName}\n${tableDescs}`);
             }
             schemaSection = schemas.join('\n\n');
         }
 
-        // Build last context (what was the previous interaction)
         let lastContextSection = '';
         if (lastEntry) {
             const parts = [];
-            if (lastEntry.lastQuestion) parts.push(`Pertanyaan terakhir: "${lastEntry.lastQuestion}"`);
-            if (lastEntry.lastSqlQuery) parts.push(`SQL terakhir: ${lastEntry.lastSqlQuery.substring(0, 150)}`);
+            if (lastEntry.lastQuestion) parts.push(`Pertanyaan terakhir user: "${lastEntry.lastQuestion}"`);
+            if (lastEntry.lastSqlQuery) parts.push(`SQL terakhir yang sukses: ${lastEntry.lastSqlQuery.substring(0, 150)}`);
             if (lastEntry.lastDatabase) parts.push(`Database terakhir: ${lastEntry.lastDatabase}`);
-            if (lastEntry.lastTotal !== undefined) parts.push(`Total data terakhir: ${lastEntry.lastTotal}`);
-            if (lastEntry.lastItemDetail) parts.push(`ITEM DETAIL TERAKHIR (Sedang dibahas): ${JSON.stringify(lastEntry.lastItemDetail)}`);
-            if (lastEntry.lastDistinctValues) parts.push(`Nilai distinct terakhir: ${JSON.stringify(lastEntry.lastDistinctValues.values?.slice(0, 5))}`);
+            if (lastEntry.lastTotal !== undefined) parts.push(`Total data ditemukan sebelumnya: ${lastEntry.lastTotal}`);
             lastContextSection = parts.join('\n');
         }
 
-        const prompt = `Kamu adalah AI Router + SQL Generator untuk chatbot eksplorasi database dinamis.
+        let insightsSection = '';
+        try {
+            const profilesObj = typeof dbCatalogSummary === 'string' ? JSON.parse(dbCatalogSummary) : dbCatalogSummary;
+            const insights = [];
+            for (const [db, p] of Object.entries(profilesObj)) {
+                if (p.insights && !p.insights.error) {
+                    insights.push(`- Database [${db}]: Topik utama adalah ${p.insights.topic}. 
+                      Poin analitik kunci: ${(p.insights.analytic_points || []).join(', ')}.
+                      Prediksi pertanyaan user: ${(p.insights.typical_questions || []).join(', ')}.`);
+                }
+            }
+            if (insights.length > 0) {
+                insightsSection = `\nDATABASE ANALYTIC INSIGHTS (Telah dipelajari AI):\n${insights.join('\n')}\n`;
+            }
+        } catch (e) {}
 
-DATABASE & SCHEMA (WAJIB JADI ACUAN UTAMA):
-${schemaSection || dbCatalogSummary || 'Belum ada database aktif'}
+        const prompt = `Kamu adalah Pakar Database & AI Router untuk ITB Support Research. 
+
+---
+STATISTIK SISTEM (GROUNDING):
+${sysStats || 'Memuat data...'}
+
+SCHEMA DATABASE (ACUAN MUTLAK):
+${schemaSection || (typeof dbCatalogSummary === 'string' ? dbCatalogSummary : JSON.stringify(dbCatalogSummary))}
+
+${insightsSection}
+---
+
+PERINGATAN KERAS (ANTI-HALUSINASI): 
+1. JANGAN PERNAH gunakan nama tabel selain yang ada di daftar SCHEMA di atas. 
+2. Di database 'itb_db', tabelnya adalah 'kekayaan_intelektual'. JANGAN PERNAH gunakan 'ki', 'intellectual_property', atau 'data'.
+3. Jika user menyebut FAKULTAS (seperti FTTM, FTI, SITH), kamu WAJIB memfilter kolom 'fakultas_inventor'. 
+   Contoh: "ki fttm" -> WHERE fakultas_inventor LIKE '%FTTM%'
+4. Jika user menyebut nomor alfanumerik (seperti E300...), itu adalah kolom 'no_permohonan'.
+5. Jika user bertanya "peningkatan", "tren", atau "perbandingan tahun", gunakan GROUP BY (contoh: SELECT SUBSTRING(tgl_pendaftaran, 1, 4) as tahun, COUNT(*) as jumlah FROM ... GROUP BY tahun).
+6. **Matematika & Analitik**: Jika user meminta perhitungan matematika (contoh: "berapa persentasenya", "jumlahkan A dan B"), AI harus membuat SQL yang mengambil angka-angka mentah dan menjelaskan langkah perhitungannya.
+7. **LIST vs COUNT (PENTING)**:
+   - Jika user berkata "tampilkan", "daftar", "siapa saja", "apa saja", "lihat", atau "data", kamu WAJIB gunakan 'SELECT *'.
+   - Hanya gunakan 'SELECT COUNT(*)' JIKA user bertanya "berapa", "jumlah", "total", atau "banyak".
+   - JANGAN menawarkan ringkasan jika user sudah minta "lihat data". Langsung tampilkan datanya.
+
+---
 
 KONTEKS PERCAKAPAN:
 ${conversationContext || 'Percakapan baru'}
@@ -164,83 +237,68 @@ ${conversationContext || 'Percakapan baru'}
 DATA SESI TERAKHIR:
 ${lastContextSection || 'Tidak ada data sebelumnya'}
 
-INPUT USER: "${userInput}"
+INPUT USER SAAT INI: "${userInput}"
 
-═══════════════════════════════════════
-TUGAS: Analisis input user dan jawab dalam format JSON KETAT.
+---
+ATURAN PENTING (GROUNDING & ACCURACY):
+1. **Pembersihan Kata (Conversational Pruning)**: 
+   - KELUARKAN kata-kata pengisi seperti "coba cek", "tolong", "ada gak nannya", "ya", "saja" dari filter SQL.
+   - Contoh: "data ki yang Erika yuni coba" -> SQL: WHERE inventor LIKE '%Erika%Yuni%'. 
 
-KLASIFIKASI INTENT:
-1. DATABASE_QUERY → User ingin mencari/menghitung/menganalisis DATA dari tabel yang tersedia di atas.
-   - Contoh: "ada berapa data?", "tampilkan data X", "cari nama Y", "yang nilainya Z"
-   - Termasuk follow-up filter: "yang tahun 2020 saja", "kalau dari kota B?"
-2. CONVERSATION → HANYA sapaan, ucapan terima kasih, atau percakapan umum.
-3. AMBIGUOUS → Benar-benar tidak bisa dimengerti atau tidak berhubungan dengan kolom manapun di database.
+2. **Fuzzy Search Strategy**:
+   - Selalu gunakan LIKE '%...%' untuk string. 
+   - Gabungkan kata kunci dengan % (Erika%Yuni).
 
-ATURAN PENTING & SELF-HEALING:
-- Jika user mencari sesuatu yang TIDAK ADA kolomnya di Schema (misal user cari "Hobi" padahal cuma ada "Nama"), JANGAN BUAT SQL. 
-- Jika RAGU antara DATABASE_QUERY dan lainnya → PILIH DATABASE_QUERY
-- Kamu HARUS menyesuaikan nama kolom dan tebakan filter berdasarkan CONTOH DATA (Sample Rows) yang terlampir di bagian SCHEMA.
-- Bebas bahasa: Pahami bahasa gaul, singkatan, dan typo. Terjemahkan ke Indonesia baku dan taruh di 'transformed_query'.
-- PENTING (Gelar & Sapaan): JANGAN sertakan gelar (Prof, Dr, Ir, S.T, M.T, dll) atau sapaan (Pak, Bu, Bapak, Ibu) ke dalam parameter SQL LIKE, kecuali jika user secara spesifik bertanya tentang gelar. Fokuslah pada NAMA INTI untuk hasil pencarian yang lebih luas. Contoh: "Pak Bagus Endar" -> WHERE inventor LIKE '%Bagus%' AND inventor LIKE '%Endar%'.
-- PENTING (FILTER KOLOM / SLICING): Jika user hanya ingin melihat kolom tertentu (misal: "tampilkan nama dan email saja" atau "judulnya saja"), kamu WAJIB mencantumkan nama-nama kolom tersebut dalam array pada field JSON 'target_columns'. Jika user tidak membatasi, biarkan null.
+3. **Intent Classification**:
+   - DATABASE_QUERY: Mencari/menghitung data.
+   - CONVERSATION: Sapaan atau konfirmasi pendek (Ya, oke, makasih, siap).
+   - AMBIGUOUS: Tidak nyambung.
 
-ATURAN SQL & MULTI-DATABASE (jika intent = DATABASE_QUERY):
-- Selalu cocokkan nama tabel dan nama kolom persis seperti yang tertulis di Schema.
-- PENTING (PENCARIAN LINTAS DB): Jika satu database (misal 'kekayaan_intelektual') tidak memiliki tabel yang relevan dengan pertanyaan user (misal user tanya 'siapa anggota ujicoba'), kamu HARUS mencari di database lain yang tersedia di skema. Tentukan 'database_hint' dengan nama database yang paling cocok.
-- PENTING (PENCARIAN TEKS): JANGAN PERNAH gunakan '=' untuk mencari nama orang, judul, atau instansi. SELALU gunakan pencarian fuzzy LIKE '%kata_kunci%'.
-- PENTING (AKURASI & FAKTA): Jika data tidak ditemukan atau kolom tidak ada, JANGAN berhalusinasi. Gunakan intent 'AMBIGUOUS' dan berikan penjelasan singkat di 'natural_response' tentang apa yang tersedia.
-- PENTING (JOIN QUERY): Jika user bertanya hubungan antara dua tabel dalam satu database (misal: "tampilkan anggota dan hobinya"), kamu DIPERBOLEHKAN menggunakan JOIN yang valid.
-- PENTING (FOLLOW-UP / CONTEXT INHERITANCE): Jika input user adalah pertanyaan lanjutan yang TERIKAT KUAT dengan percakapan sebelumnya (misal: "tampilkan judul-nya", "siapa saja inventornya?", "dari fakultas apa saja?", "apakah ada yang paten?") dan ada 'SQL terakhir' di data sesi, kamu WAJIB MENYALIN klausa 'WHERE' dari SQL terakhir. 
-- PENTING (NEW QUERY = JANGAN SALIN KONTEKS): JIKA input user sangat spesifik dan merupakan subjek mandiri (misal: "listkan pertahun", "berapa total paten tahun 2020", "cari nama Budi", "ada yang tentang motor?"), JANGAN copy klausa WHERE dari pertanyaan sebelumnya. Mulailah SQL dari nol. Jangan berasumsi "motor" yang dimaksud adalah milik penemu dari percakapan sebelumnya kecuali user menyuruh eksplisit.
-- PENTING (AKURASI SEARCH): Jika user mencari NAMA ORANG/INVENTOR (misal: "Harry Pragoya") dan nama tersebut dirasa typo, JANGAN mencoba mencari data lain yang tidak nyambung (seperti mencari judul atau ID acak). Tetaplah buat kueri SQL dengan NAMA TERSEBUT (LIKE '%Harry%Pragoya%'). Lebih baik sistem mengembalikan 0 hasil agar fitur "Saran Nama Mirip" kami muncul, daripada kamu memberikan data yang salah (halusinasi). JANGAN pernah memaksakan hasil jika data tidak cocok 100%.
-- PENTING (GRAFIK/VISUALISASI): Jika user minta "buat grafik per X", "tren Y", atau "diagram", buatlah SQL agregasi (GROUP BY) demi visualisasi yang bermakna. Contoh: SELECT kolom_X, COUNT(*) as total GROUP BY kolom_X.
-- PENTING (DOWNLOAD/EXCEL): Jika user minta "download data X" atau "excel", buatlah query yang relevan dengan filter tersebut.
-- Minta rincian jenis/kategori: SELECT kolom, COUNT(*) as total GROUP BY kolom
-- PENTING (WAKTU & RENTANG): Jika user menyebutkan rentang waktu (misal "dari 2017 sampai 2021" atau "antara tahun X dan Y"), kamu WAJIB menggunakan operator BETWEEN atau >= dan <= pada kolom tanggal asli dari skema. Contoh: WHERE YEAR(tgl_pendaftaran) BETWEEN 2017 AND 2021.
-- PENTING (WAKTU): Jika ada kata "peningkatan", "tren", "perkembangan", atau rentang waktu, HARUS gunakan kelompok per tahun (GROUP BY). Gunakan nama kolom tanggal asli (misal: tgl_pendaftaran). Contoh: SELECT YEAR(tgl_pendaftaran) AS tahun, COUNT(*) AS total ... GROUP BY YEAR(tgl_pendaftaran) ORDER BY tahun ASC. JANGAN gunakan teks "kolom_tanggal" sebagai nama kolom.
-- Minta jumlah total (hanya jika ditanya "berapa total keseluruhan"): SELECT COUNT(*) AS total
-- Minta jumlah entitas unik: SELECT COUNT(DISTINCT kolom) AS total
-- Minta data detail: SELECT * ... LIMIT 10 OFFSET 0
-- Jika minta daftar nama/identitas saja: SELECT DISTINCT kolom ... LIMIT 50
-- JANGAN pernah menggunakan COUNT(*) jika user mencari nama orang berserta keterangannya.
-- JANGAN PERNAH menyertakan kalimat instruksi internal bot (seperti "AI mencari data", "Asisten membantu") di dalam 'natural_response' atau field lainnya. Jawab langsung ke inti pertanyaan.
+4. **Column Adherence**:
+   - Jika user meminta kolom spesifik (contoh: "nama dan email saja"), kamu WAJIB memasukkan kolom tersebut ke SQL (SELECT nama, email FROM ...) dan meletakkannya di target_columns.
 
-Jawab HANYA dalam JSON (tanpa markdown, tanpa backticks):
+5. **JSON Format**: Jawab hanya dalam JSON murni.
 {
-  "intent": "DATABASE_QUERY",
+  "intent": "DATABASE_QUERY" | "CONVERSATION" | "AMBIGUOUS",
   "sql": "SELECT ...",
-  "database_hint": "nama_db",
-  "target_columns": ["kolom1", "kolom2"] | null,
+  "database_hint": "itb_db",
+  "target_columns": ["judul", "jenis_ki", "inventor", "tgl_pendaftaran"],
   "entities": { "filter": "nilai" },
-  "natural_response": "Pesan jika intent=CONVERSATION atau AMBIGUOUS",
-  "transformed_query": "Pertanyaan yang sudah diperjelas"
-}`;
+  "natural_response": "Pesan ramah",
+  "transformed_query": "Instruksi bersih"
+}
 
+PERINGATAN AKURASI SEARCH: 
+- User sering mengetik: "liatkan data ki yang Erika yuni coba"
+- SQL yang BENAR: SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Erika%Yuni%'
+- JANGAN PERNAH masukkan kata "coba", "data", "liatkan", "yang", atau "punya" ke dalam filter SQL. HANYA ambil nama asli subjeknya.
+`;
         return prompt;
     }
 
-    // Parse JSON response dari AI (toleran terhadap format yang tidak sempurna)
     parseAIResponse(text) {
         if (!text) return null;
         try {
-            // Coba langsung parse
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[0]);
             }
         } catch (e) {
-            // Coba perbaiki common issues
+            console.error('AI Orchestrator: Failed to parse AI response:', e.message);
             try {
-                let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-                const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    return JSON.parse(jsonMatch[0]);
-                }
-            } catch (e2) {
-                console.error('AI Orchestrator: Failed to parse AI response:', e2.message);
-            }
+                return JSON.parse(text.trim());
+            } catch(e2) {}
         }
         return null;
+    }
+
+    stripPromptLeak(text) {
+        if (!text || typeof text !== 'string') return text || '';
+        let cleaned = text.replace(/^(Asisten|AI|Sistem|Berikut|Tentu|Baik|Daftar Lengkap|Struktur Jawaban|Instruksi|Template)(.*?)?:\s*/gi, '').trim();
+        cleaned = cleaned.replace(/^Sure, here is the list:|^Tentu, ini datanya:|^Ok, let me look that up:|^Berikut daftar|^\[Nilai\]/gi, '').trim();
+        cleaned = cleaned.replace(/\[Nilai\]/g, '-').replace(/\[JUDUL.*?\]/g, '');
+        return cleaned || text; 
     }
 }
 

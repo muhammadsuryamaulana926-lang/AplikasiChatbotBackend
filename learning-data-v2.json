@@ -650,6 +650,71 @@
             "lastUsed": 1773124823358,
             "confidence": 0.5
           }
+        ],
+        [
+          "data ki yang statusnya ajuan paten ya_itb_db",
+          {
+            "query": "data ki yang statusnya ajuan paten ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 312,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773271985449,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "liatkan ya datanya_itb_db",
+          {
+            "query": "liatkan ya datanya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 312,
+            "avgExecutionTime": 77358,
+            "lastUsed": 1773272062806,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "data ki 2021 ada berapa?_itb_db",
+          {
+            "query": "data ki 2021 ada berapa?",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773272800808,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "boleh liatkan ya data nya_itb_db",
+          {
+            "query": "boleh liatkan ya data nya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 58455,
+            "lastUsed": 1773272859263,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "jadikan dashboard ya_itb_db",
+          {
+            "query": "jadikan Dashboard ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 95997,
+            "lastUsed": 1773272955260,
+            "confidence": 0.5
+          }
         ]
       ],
       "shortcuts": [
@@ -1140,6 +1205,61 @@
             "frequency": 1,
             "avgExecutionTime": 77123,
             "lastUsed": 1773124823358,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data ki yang statusnya ajuan paten ya",
+          {
+            "query": "data ki yang statusnya ajuan paten ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773271985449,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "liatkan ya datanya",
+          {
+            "query": "liatkan ya datanya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 77358,
+            "lastUsed": 1773272062806,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data ki 2021 ada berapa?",
+          {
+            "query": "data ki 2021 ada berapa?",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773272800808,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "boleh liatkan ya data nya",
+          {
+            "query": "boleh liatkan ya data nya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 58455,
+            "lastUsed": 1773272859263,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "jadikan dashboard ya",
+          {
+            "query": "jadikan Dashboard ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 95997,
+            "lastUsed": 1773272955260,
             "confidence": 0.3
           }
         ]
@@ -1724,6 +1844,71 @@
                 "name": "unknown",
                 "score": 1,
                 "lastUsed": 1773124823358
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data ki yang statusnya ajuan paten ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773271985449
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "liatkan ya datanya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773272062806
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data ki 2021 ada berapa?",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773272800808
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "boleh liatkan ya data nya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773272859263
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "jadikan dashboard ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773272955260
               }
             ],
             "totalQueries": 1
@@ -2437,5 +2622,5 @@
       "errors": []
     }
   ],
-  "lastSaved": 1773183122160
+  "lastSaved": 1773284995813
 }
