@@ -1,0 +1,496 @@
+{
+  "itb_db": {
+    "database": "itb_db",
+    "summary": "Tabel [kekayaan_intelektual] memiliki kolom: id (int), id_ki (varchar(255)), jenis_ki (varchar(255)), judul (varchar(255)), abstrak (longtext), tkt (varchar(255)), status_ki (varchar(255)), tgl_pendaftaran (varchar(255)), no_permohonan (varchar(255)), tgl_sertifikasi (varchar(255)), id_sertifikat (varchar(255)), status_dokumen (varchar(255)), inventor (longtext), fakultas_inventor (varchar(255)), pekerjaan_inventor (varchar(255)), nama_instansi_inventor (text), mitra_kepemilikan (varchar(255))",
+    "schema": {
+      "kekayaan_intelektual": {
+        "columns": "id, id_ki, jenis_ki, judul, abstrak, tkt, status_ki, tgl_pendaftaran, no_permohonan, tgl_sertifikasi, id_sertifikat, status_dokumen, inventor, fakultas_inventor, pekerjaan_inventor, nama_instansi_inventor, mitra_kepemilikan",
+        "column_details": "id (int), id_ki (varchar(255)), jenis_ki (varchar(255)), judul (varchar(255)), abstrak (longtext), tkt (varchar(255)), status_ki (varchar(255)), tgl_pendaftaran (varchar(255)), no_permohonan (varchar(255)), tgl_sertifikasi (varchar(255)), id_sertifikat (varchar(255)), status_dokumen (varchar(255)), inventor (longtext), fakultas_inventor (varchar(255)), pekerjaan_inventor (varchar(255)), nama_instansi_inventor (text), mitra_kepemilikan (varchar(255))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "id_ki": "1281",
+            "jenis_ki": "Hak Cipta",
+            "judul": "Geolini Converter",
+            "abstrak": "Geolini Converter Software merupakan perangkat lunak yang digunakan untuk mengkonversi data rekaman waveform/seismpgram dari format *.gln menjadi *.mseed.\r\n\r\n",
+            "tkt": "-",
+            "status_ki": "Tersertifikasi",
+            "tgl_pendaftaran": "2023-04-04",
+            "no_permohonan": "EC00202326013",
+            "tgl_sertifikasi": "2023-03-30",
+            "id_sertifikat": "000458935",
+            "status_dokumen": "penerbitan_sertifikat",
+            "inventor": "Gunta Akhiri (PT AERING -  - ),<br/>Dr. Ir. Diky Irawan S (PT Geo Stroom -  - ),<br/>Prof. Dr.Sc. Ir. Andri Dian Nugraha S.Si., M.Si. (FTTM - Dosen - 197809082009121001),<br/>Dr. Ir. Zulfakriza S.Si., M.T. (FTTM - Dosen - 197905132006041006)",
+            "fakultas_inventor": "FTTM, FTTM",
+            "pekerjaan_inventor": "Dosen, Dosen",
+            "nama_instansi_inventor": "PT AERING, PT Geo Stroom, Institut Teknologi Bandung, Institut Teknologi Bandung",
+            "mitra_kepemilikan": "Institut Teknologi Bandung"
+          },
+          {
+            "id": 2,
+            "id_ki": "122",
+            "jenis_ki": "Paten",
+            "judul": "TURBIN ANGIN KECEPATAN RENDAH DENGAN BILAH YANG MEMILIKI PANGKAL MELEKUK",
+            "abstrak": "-",
+            "tkt": null,
+            "status_ki": "Ajuan Paten",
+            "tgl_pendaftaran": "2024-10-24",
+            "no_permohonan": "S00202409617",
+            "tgl_sertifikasi": null,
+            "id_sertifikat": null,
+            "status_dokumen": "masa_pengumuman",
+            "inventor": "Dr. Ir. Eko Mursito Budi M.T. (FTI - Dosen - 196710061997021001)",
+            "fakultas_inventor": "FTI",
+            "pekerjaan_inventor": "Dosen",
+            "nama_instansi_inventor": "Institut Teknologi Bandung",
+            "mitra_kepemilikan": "Institut Teknologi Bandung"
+          },
+          {
+            "id": 3,
+            "id_ki": "1420",
+            "jenis_ki": "Hak Cipta",
+            "judul": "Program Prediksi dan Optimisasi Kinerja Injeksi Air pada Lapangan Minyak - CRM Data Driven Model",
+            "abstrak": "Program Komputer yang telah diciptakan dapat digunakan untuk memprediksi kinerja produksi sumur (laju alir minyak) pada lapangan minyak yang dilakukan injeksi air/waterflooding berdasar komputasi secara analitik. Masukan data yang dibutuhkan untuk mengkalibrasi model kinerja produksi antara lain adalah data laju produksi sumuran, data laju injeksi sumuran serta koordinat sumur-sumur injeksi dan produksi. Program komputer yang diciptakan juga dapat digunakan untuk mengoptimasi operasi injeksi air dengan mencari strategi alokasi injeksi air yang tepat. Program ini dibuat dalam bahasa pemrograman Matlab R2021b",
+            "tkt": "-",
+            "status_ki": "Tersertifikasi",
+            "tgl_pendaftaran": "2022-08-12",
+            "no_permohonan": "EC00202263757",
+            "tgl_sertifikasi": "2022-08-12",
+            "id_sertifikat": "000379490",
+            "status_dokumen": "penerbitan_sertifikat",
+            "inventor": "Prof. Ir. Taufan Marhaendrajana M.Sc., Ph.D. (FTTM - Dosen - 196801171993021001),<br/>Billal Maydika Aslam S.T., M.T. (FTTM - Dosen - 119110056),<br/>Muhammad Hasto Nugroho (Institut Teknologi Bandung - Lainnya - )",
+            "fakultas_inventor": "FTTM, FTTM",
+            "pekerjaan_inventor": "Dosen, Dosen, Lainnya",
+            "nama_instansi_inventor": "Institut Teknologi Bandung, Institut Teknologi Bandung, Institut Teknologi Bandung",
+            "mitra_kepemilikan": "Institut Teknologi Bandung"
+          }
+        ]
+      }
+    },
+    "keywords": [
+      "judul",
+      "ki"
+    ],
+    "insights": {
+      "topic": "Kekayaan Intelektual Institut Teknologi Bandung",
+      "analytic_points": [
+        "Kolom id dapat digunakan untuk statistik COUNT, sedangkan kolom tgl_pendaftaran dapat digunakan untuk tren YEAR atau DATE.",
+        "Kolom jenis_ki dapat digunakan untuk statistik COUNT, sedangkan kolom fakultas_inventor dapat digunakan untuk statistik COUNT.",
+        "Kolom id_sertifikat dapat digunakan untuk statistik COUNT, sedangkan kolom tgl_sertifikasi dapat digunakan untuk tren YEAR atau DATE.",
+        "Kolom inventor dapat digunakan untuk statistik COUNT, sedangkan kolom pekerjaan_inventor dapat digunakan untuk statistik COUNT.",
+        "Kolom mitra_kepemilikan dapat digunakan untuk statistik COUNT, sedangkan kolom nama_instansi_inventor dapat digunakan untuk statistik COUNT."
+      ],
+      "typical_questions": [
+        "Berapa jumlah kekayaan intelektual yang telah terdaftar per tahun?",
+        "Siapa yang paling banyak memiliki hak cipta?",
+        "Berapa jumlah sertifikat yang telah diterbitkan per tahun?",
+        "Apa jenis kekayaan intelektual yang paling banyak diterbitkan?",
+        "Berapa jumlah inventor yang bekerja sebagai dosen?"
+      ]
+    }
+  },
+  "ujicoba": {
+    "database": "ujicoba",
+    "summary": "Tabel [anggota] memiliki kolom: id (int), nama (varchar(100)), no_telp (varchar(20)), email (varchar(100)), created_at (timestamp); Tabel [hobi] memiliki kolom: id (int), anggota_id (int), nama_hobi (varchar(100)), created_at (timestamp); Tabel [kehadiran] memiliki kolom: id (int), anggota_id (int), tanggal (date), status (enum('hadir','izin','tidak_hadir','terlambat')), keterangan (varchar(255)), created_at (timestamp)",
+    "schema": {
+      "anggota": {
+        "columns": "id, nama, no_telp, email, created_at",
+        "column_details": "id (int), nama (varchar(100)), no_telp (varchar(20)), email (varchar(100)), created_at (timestamp)",
+        "sample_rows": [
+          {
+            "id": 1,
+            "nama": "Akmal",
+            "no_telp": "082312345678",
+            "email": "akmal@email.com",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 2,
+            "nama": "Alif",
+            "no_telp": "081234567890",
+            "email": "alif@email.com",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 3,
+            "nama": "Budi",
+            "no_telp": "082590123456",
+            "email": "budi@email.com",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          }
+        ]
+      },
+      "hobi": {
+        "columns": "id, anggota_id, nama_hobi, created_at",
+        "column_details": "id (int), anggota_id (int), nama_hobi (varchar(100)), created_at (timestamp)",
+        "sample_rows": [
+          {
+            "id": 1,
+            "anggota_id": 1,
+            "nama_hobi": "Ngoding",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 2,
+            "anggota_id": 1,
+            "nama_hobi": "Futsal",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 3,
+            "anggota_id": 2,
+            "nama_hobi": "Mancing",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          }
+        ]
+      },
+      "kehadiran": {
+        "columns": "id, anggota_id, tanggal, status, keterangan, created_at",
+        "column_details": "id (int), anggota_id (int), tanggal (date), status (enum('hadir','izin','tidak_hadir','terlambat')), keterangan (varchar(255)), created_at (timestamp)",
+        "sample_rows": [
+          {
+            "id": 1,
+            "anggota_id": 1,
+            "tanggal": "2026-02-09T17:00:00.000Z",
+            "status": "hadir",
+            "keterangan": "Datang tepat waktu",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 2,
+            "anggota_id": 2,
+            "tanggal": "2026-02-09T17:00:00.000Z",
+            "status": "izin",
+            "keterangan": "Urusan keluarga",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          },
+          {
+            "id": 3,
+            "anggota_id": 3,
+            "tanggal": "2026-02-09T17:00:00.000Z",
+            "status": "terlambat",
+            "keterangan": "Terlambat 10 menit",
+            "created_at": "2026-02-12T07:57:40.000Z"
+          }
+        ]
+      }
+    },
+    "keywords": [
+      "nama",
+      "email",
+      "hobi",
+      "status"
+    ],
+    "insights": {
+      "topic": "Manajemen Anggota dan Kehadiran",
+      "analytic_points": [
+        "COUNT(anggota.id) - Jumlah total anggota",
+        "COUNT(DISTINCT anggota.id) - Jumlah anggota unik",
+        "COUNT(hobi.id) - Jumlah total hobi yang terdaftar",
+        "COUNT(DISTINCT hobi.anggota_id) - Jumlah anggota yang memiliki hobi",
+        "COUNT(kehadiran.id) - Jumlah total catatan kehadiran",
+        "COUNT(DISTINCT kehadiran.anggota_id) - Jumlah anggota yang memiliki catatan kehadiran",
+        "COUNT(kehadiran.status) - Jumlah catatan kehadiran berdasarkan status",
+        "AVG(DATE_PART('hour', kehadiran.tanggal)) - Rata-rata jam kehadiran (jika relevan)",
+        "YEAR(kehadiran.tanggal) - Tren kehadiran per tahun",
+        "MONTH(kehadiran.tanggal) - Tren kehadiran per bulan",
+        "DAY(kehadiran.tanggal) - Tren kehadiran per hari",
+        "COUNT(anggota.created_at) - Pertumbuhan anggota dari waktu ke waktu",
+        "COUNT(hobi.created_at) - Penambahan hobi dari waktu ke waktu",
+        "COUNT(kehadiran.created_at) - Penambahan catatan kehadiran dari waktu ke waktu"
+      ],
+      "typical_questions": [
+        "Berapa jumlah total anggota yang terdaftar?",
+        "Berapa jumlah anggota yang memiliki hobi?",
+        "Siapa saja anggota yang memiliki hobi 'Ngoding'?",
+        "Berapa jumlah kehadiran anggota per tanggal?",
+        "Bagaimana tren status kehadiran anggota dari bulan ke bulan?",
+        "Berapa jumlah anggota yang hadir, izin, tidak hadir, atau terlambat pada tanggal tertentu?",
+        "Siapa anggota yang paling sering terlambat?",
+        "Berapa jumlah anggota baru yang bergabung setiap bulannya?",
+        "Berapa jumlah hobi yang dimiliki oleh setiap anggota?",
+        "Apakah ada korelasi antara hobi anggota dengan status kehadirannya?"
+      ],
+      "data_relationships": [
+        {
+          "from_table": "hobi",
+          "from_column": "anggota_id",
+          "to_table": "anggota",
+          "to_column": "id",
+          "type": "Many-to-One (Satu anggota bisa memiliki banyak hobi, satu hobi hanya dimiliki satu anggota)"
+        },
+        {
+          "from_table": "kehadiran",
+          "from_column": "anggota_id",
+          "to_table": "anggota",
+          "to_column": "id",
+          "type": "Many-to-One (Satu anggota bisa memiliki banyak catatan kehadiran, satu catatan kehadiran hanya untuk satu anggota)"
+        }
+      ]
+    }
+  },
+  "perusahaan_profesional_db": {
+    "database": "perusahaan_profesional_db",
+    "summary": "Tabel [absensi] memiliki kolom: id (int), karyawan_id (int), tanggal (date), jam_masuk (time), jam_keluar (time), status (enum('hadir','izin','sakit','alpha')); Tabel [departemen] memiliki kolom: id (int), nama_departemen (varchar(100)), keterangan (text); Tabel [gaji] memiliki kolom: id (int), karyawan_id (int), bulan (varchar(20)), gaji_pokok (decimal(12,2)), bonus (decimal(12,2)), potongan (decimal(12,2)), total_gaji (decimal(12,2)); Tabel [jabatan] memiliki kolom: id (int), nama_jabatan (varchar(100)), level_jabatan (varchar(50)); Tabel [karyawan] memiliki kolom: id (int), nip (varchar(30)), nama_lengkap (varchar(100)), email (varchar(100)), no_hp (varchar(20)), alamat (text), departemen_id (int), jabatan_id (int), tanggal_masuk (date), status (enum('aktif','nonaktif')); Tabel [karyawan_proyek] memiliki kolom: id (int), karyawan_id (int), proyek_id (int), peran (varchar(100)); Tabel [proyek] memiliki kolom: id (int), nama_proyek (varchar(100)), klien (varchar(100)), tanggal_mulai (date), tanggal_selesai (date), status (enum('ongoing','selesai','batal')); Tabel [users] memiliki kolom: id (int), karyawan_id (int), username (varchar(50)), password (varchar(255)), role (enum('admin','hr','karyawan'))",
+    "schema": {
+      "absensi": {
+        "columns": "id, karyawan_id, tanggal, jam_masuk, jam_keluar, status",
+        "column_details": "id (int), karyawan_id (int), tanggal (date), jam_masuk (time), jam_keluar (time), status (enum('hadir','izin','sakit','alpha'))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "karyawan_id": 1,
+            "tanggal": "2024-01-01T17:00:00.000Z",
+            "jam_masuk": "08:00:00",
+            "jam_keluar": "17:00:00",
+            "status": "hadir"
+          },
+          {
+            "id": 2,
+            "karyawan_id": 2,
+            "tanggal": "2024-01-01T17:00:00.000Z",
+            "jam_masuk": "08:10:00",
+            "jam_keluar": "17:05:00",
+            "status": "hadir"
+          },
+          {
+            "id": 3,
+            "karyawan_id": 3,
+            "tanggal": "2024-01-01T17:00:00.000Z",
+            "jam_masuk": null,
+            "jam_keluar": null,
+            "status": "izin"
+          }
+        ]
+      },
+      "departemen": {
+        "columns": "id, nama_departemen, keterangan",
+        "column_details": "id (int), nama_departemen (varchar(100)), keterangan (text)",
+        "sample_rows": [
+          {
+            "id": 1,
+            "nama_departemen": "IT",
+            "keterangan": "Teknologi Informasi"
+          },
+          {
+            "id": 2,
+            "nama_departemen": "HRD",
+            "keterangan": "Sumber Daya Manusia"
+          },
+          {
+            "id": 3,
+            "nama_departemen": "Keuangan",
+            "keterangan": "Manajemen Keuangan"
+          }
+        ]
+      },
+      "gaji": {
+        "columns": "id, karyawan_id, bulan, gaji_pokok, bonus, potongan, total_gaji",
+        "column_details": "id (int), karyawan_id (int), bulan (varchar(20)), gaji_pokok (decimal(12,2)), bonus (decimal(12,2)), potongan (decimal(12,2)), total_gaji (decimal(12,2))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "karyawan_id": 1,
+            "bulan": "Januari 2024",
+            "gaji_pokok": "6000000.00",
+            "bonus": "500000.00",
+            "potongan": "200000.00",
+            "total_gaji": "6300000.00"
+          },
+          {
+            "id": 2,
+            "karyawan_id": 2,
+            "bulan": "Januari 2024",
+            "gaji_pokok": "9000000.00",
+            "bonus": "1000000.00",
+            "potongan": "300000.00",
+            "total_gaji": "9700000.00"
+          },
+          {
+            "id": 3,
+            "karyawan_id": 3,
+            "bulan": "Januari 2024",
+            "gaji_pokok": "5500000.00",
+            "bonus": "300000.00",
+            "potongan": "100000.00",
+            "total_gaji": "5700000.00"
+          }
+        ]
+      },
+      "jabatan": {
+        "columns": "id, nama_jabatan, level_jabatan",
+        "column_details": "id (int), nama_jabatan (varchar(100)), level_jabatan (varchar(50))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "nama_jabatan": "Programmer",
+            "level_jabatan": "Staff"
+          },
+          {
+            "id": 2,
+            "nama_jabatan": "HR Manager",
+            "level_jabatan": "Manager"
+          },
+          {
+            "id": 3,
+            "nama_jabatan": "Finance Staff",
+            "level_jabatan": "Staff"
+          }
+        ]
+      },
+      "karyawan": {
+        "columns": "id, nip, nama_lengkap, email, no_hp, alamat, departemen_id, jabatan_id, tanggal_masuk, status",
+        "column_details": "id (int), nip (varchar(30)), nama_lengkap (varchar(100)), email (varchar(100)), no_hp (varchar(20)), alamat (text), departemen_id (int), jabatan_id (int), tanggal_masuk (date), status (enum('aktif','nonaktif'))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "nip": "EMP001",
+            "nama_lengkap": "Andi Wijaya",
+            "email": "andi@company.com",
+            "no_hp": "081234567890",
+            "alamat": "Jakarta",
+            "departemen_id": 1,
+            "jabatan_id": 1,
+            "tanggal_masuk": "2023-01-09T17:00:00.000Z",
+            "status": "aktif"
+          },
+          {
+            "id": 2,
+            "nip": "EMP002",
+            "nama_lengkap": "Siti Rahma",
+            "email": "siti@company.com",
+            "no_hp": "082233445566",
+            "alamat": "Bandung",
+            "departemen_id": 2,
+            "jabatan_id": 2,
+            "tanggal_masuk": "2022-07-31T17:00:00.000Z",
+            "status": "aktif"
+          },
+          {
+            "id": 3,
+            "nip": "EMP003",
+            "nama_lengkap": "Budi Santoso",
+            "email": "budi@company.com",
+            "no_hp": "083344556677",
+            "alamat": "Surabaya",
+            "departemen_id": 3,
+            "jabatan_id": 3,
+            "tanggal_masuk": "2023-03-14T17:00:00.000Z",
+            "status": "aktif"
+          }
+        ]
+      },
+      "karyawan_proyek": {
+        "columns": "id, karyawan_id, proyek_id, peran",
+        "column_details": "id (int), karyawan_id (int), proyek_id (int), peran (varchar(100))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "karyawan_id": 1,
+            "proyek_id": 1,
+            "peran": "Backend Developer"
+          },
+          {
+            "id": 2,
+            "karyawan_id": 2,
+            "proyek_id": 1,
+            "peran": "HR Consultant"
+          },
+          {
+            "id": 3,
+            "karyawan_id": 3,
+            "proyek_id": 2,
+            "peran": "Finance Support"
+          }
+        ]
+      },
+      "proyek": {
+        "columns": "id, nama_proyek, klien, tanggal_mulai, tanggal_selesai, status",
+        "column_details": "id (int), nama_proyek (varchar(100)), klien (varchar(100)), tanggal_mulai (date), tanggal_selesai (date), status (enum('ongoing','selesai','batal'))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "nama_proyek": "Sistem HRIS",
+            "klien": "PT Maju Jaya",
+            "tanggal_mulai": "2023-12-31T17:00:00.000Z",
+            "tanggal_selesai": "2024-06-29T17:00:00.000Z",
+            "status": "ongoing"
+          },
+          {
+            "id": 2,
+            "nama_proyek": "Website Company Profile",
+            "klien": "CV Kreatif",
+            "tanggal_mulai": "2023-08-31T17:00:00.000Z",
+            "tanggal_selesai": "2023-11-29T17:00:00.000Z",
+            "status": "selesai"
+          }
+        ]
+      },
+      "users": {
+        "columns": "id, karyawan_id, username, password, role",
+        "column_details": "id (int), karyawan_id (int), username (varchar(50)), password (varchar(255)), role (enum('admin','hr','karyawan'))",
+        "sample_rows": [
+          {
+            "id": 1,
+            "karyawan_id": 1,
+            "username": "andi",
+            "password": "password123",
+            "role": "karyawan"
+          },
+          {
+            "id": 2,
+            "karyawan_id": 2,
+            "username": "siti",
+            "password": "password123",
+            "role": "hr"
+          },
+          {
+            "id": 3,
+            "karyawan_id": 3,
+            "username": "budi",
+            "password": "password123",
+            "role": "admin"
+          }
+        ]
+      }
+    },
+    "keywords": [
+      "email",
+      "karyawan",
+      "status"
+    ],
+    "insights": {
+      "topic": "Manajemen Karyawan dan Operasional Perusahaan",
+      "analytic_points": [
+        "COUNT(id) pada tabel 'absensi' untuk jumlah catatan absensi.",
+        "SUM(total_gaji) pada tabel 'gaji' untuk total pengeluaran gaji.",
+        "AVG(gaji_pokok) pada tabel 'gaji' untuk rata-rata gaji pokok.",
+        "COUNT(DISTINCT karyawan_id) pada tabel 'absensi' untuk jumlah karyawan yang tercatat absensinya.",
+        "COUNT(id) pada tabel 'karyawan' untuk jumlah total karyawan.",
+        "YEAR(tanggal_masuk) pada tabel 'karyawan' untuk tren karyawan baru per tahun.",
+        "COUNT(status) pada tabel 'absensi' untuk distribusi status kehadiran.",
+        "SUM(bonus) dan SUM(potongan) pada tabel 'gaji' untuk analisis komponen gaji.",
+        "COUNT(nama_departemen) pada tabel 'departemen' untuk jumlah departemen.",
+        "COUNT(nama_jabatan) pada tabel 'jabatan' untuk jumlah jabatan."
+      ],
+      "typical_questions": [
+        "Berapa jumlah total karyawan yang ada di perusahaan?",
+        "Berapa rata-rata gaji pokok karyawan per bulan?",
+        "Siapa saja karyawan yang memiliki status 'alpha' dalam sebulan terakhir?",
+        "Berapa total pengeluaran gaji perusahaan pada bulan Januari 2024?",
+        "Bagaimana tren jumlah karyawan baru yang masuk per tahun?",
+        "Departemen apa saja yang ada di perusahaan dan berapa jumlah karyawan di masing-masing departemen?",
+        "Berapa jumlah karyawan yang hadir, izin, sakit, dan alpha pada tanggal tertentu?",
+        "Siapa karyawan dengan bonus tertinggi pada bulan tertentu?",
+        "Jabatan apa saja yang tersedia di perusahaan dan berapa jumlah karyawan pada setiap jabatan?"
+      ],
+      "predicted_relations": [
+        "Tabel 'karyawan' dapat dihubungkan dengan tabel 'absensi' menggunakan 'karyawan_id' untuk menganalisis pola kehadiran karyawan.",
+        "Tabel 'karyawan' dapat dihubungkan dengan tabel 'gaji' menggunakan 'karyawan_id' untuk menganalisis informasi gaji per karyawan.",
+        "Tabel 'karyawan' dapat dihubungkan dengan tabel 'departemen' menggunakan 'departemen_id' untuk mengelompokkan karyawan berdasarkan departemen.",
+        "Tabel 'karyawan' dapat dihubungkan dengan tabel 'jabatan' menggunakan 'jabatan_id' untuk mengelompokkan karyawan berdasarkan jabatan.",
+        "Tabel 'absensi' dan 'gaji' dapat dihubungkan secara tidak langsung melalui tabel 'karyawan' untuk menganalisis korelasi antara kehadiran dan pendapatan karyawan."
+      ]
+    }
+  }
+}

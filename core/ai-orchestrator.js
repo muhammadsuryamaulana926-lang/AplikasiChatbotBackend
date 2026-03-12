@@ -36,9 +36,9 @@ class AIOrchestrator {
         this.DASHBOARD_CMD = /\b(dashboard(?:nya)?|dashbod(?:nya)?|desbor[dt]?(?:nya)?|visualisasi\s+interaktif|buka\s+(?:dashboard|dashbod|desbor[dt]?)|buatkan\s+(?:dashboard|dashbod|desbor[dt]?)|tampilkan\s+(?:dashboard|dashbod|desbor[dt]?)|jadikan\s+(?:dashboard|dashbod|desbor[dt]?))\b/i;
 
         // Sapaan murni — cepat tanpa AI (Toleran tanda baca)
-        this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey|salam|pagi|siang|malam|halo(.*)bot)[.?!\s]*$/i;
-        this.THANKS = /^(terima kasih|makasih|thanks|thank you|thx|ok(e)? (makasih|terima kasih)|sip (makasih|terima kasih)?|siap|siap terimaksih|siap terimakasih|siap (makasih|terimakasih|terima kasih)|okee|oke siap|yoi|oke terimakasih|ok siap|oke siap|siap bosque|mantap|ok mantap|sip mantap)[.?!\s]*$/i;
-        this.GOODBYE = /^(sampai jumpa|bye|dadah|selamat tinggal|pamit|udahan|cukup|dah)[.?!\s]*$/i;
+        this.GREETING = /^(hai|halo|hi|hello|assalamualaikum|selamat (pagi|siang|sore|malam)|apa kabar|hey|salam|pagi|siang|malam|halo(.*)bot|p|punten|permisi)[.?!\s]*$/i;
+        this.THANKS = /^(terima kasih|makasih|thanks|thank you|thx|ok(e)? (makasih|terima kasih)|sip (makasih|terima kasih)?|siap|siap terimaksih|siap terimakasih|siap (makasih|terimakasih|terima kasih)|okee|oke siap|yoi|oke terimakasih|ok siap|oke siap|siap bosque|mantap|ok mantap|sip mantap|hatur nuhun|aman|oke|ok|sip|siap|sudah cukup|cukup|beres)[.?!\s]*$/i;
+        this.GOODBYE = /^(sampai jumpa|bye|dadah|selamat tinggal|pamit|udahan|cukup|dah|selesai|exit|keluar|quit|udahan dulu)[.?!\s]*$/i;
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -111,19 +111,68 @@ class AIOrchestrator {
             return { intent: 'COMMAND', command: 'EXPORT', confidence: 0.95 };
         }
 
-        // Catch-all for short confirmations like "ya", "tampilkan", "liatkan"
-        if (qLower.length < 25 && this.CONFIRM_YES.test(qLower)) {
-            return { intent: 'CONFIRMATION', value: true, confidence: 0.90 };
+        // === COUNT TYPE PATTERN (e.g., "ada berapa jenis ki") ===
+        if (qLower.includes('berapa') && (qLower.includes('jenis ki') || qLower.includes('tipe ki'))) {
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'itb_db',
+                sql: "SELECT COUNT(DISTINCT jenis_ki) AS total FROM kekayaan_intelektual",
+                confidence: 0.95,
+                natural_response: "Saya sedang menghitung jumlah jenis Kekayaan Intelektual yang terdaftar..."
+            };
+        }
+        
+        // === LIST BY STATUS PATTERN (e.g., "data ki yang tersertifikasi") ===
+        if (qLower.includes('data ki') && qLower.includes('tersertifikasi')) {
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'itb_db',
+                sql: "SELECT * FROM kekayaan_intelektual WHERE status_ki LIKE '%Tersertifikasi%' LIMIT 10",
+                confidence: 0.9,
+                natural_response: "Mencari data Kekayaan Intelektual yang sudah tersertifikasi..."
+            };
         }
 
-        // Pattern: "ki 2024", "data ki 2016", "coba yang 2021 deh", "tahun 2020", "ada berapa 2006"
+        // === SIMPLE LISTING PATTERN (e.g., "anggota ujicoba", "data karyawan") ===
+        if (qLower.includes('anggota') && qLower.includes('ujicoba')) {
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'ujicoba',
+                sql: "SELECT * FROM anggota LIMIT 10",
+                confidence: 0.95,
+                natural_response: "Mengambil daftar anggota dari database ujicoba..."
+            };
+        }
+        if (qLower.includes('data karyawan') || (qLower.includes('data') && qLower.includes('karyawan'))) {
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'perusahaan_profesional_db',
+                sql: "SELECT * FROM karyawan LIMIT 10",
+                confidence: 0.9,
+                natural_response: "Mengambil data karyawan perusahaan..."
+            };
+        }
+
+        // === LATEST/NEWEST PATTERN (Proactive) ===
+        if (qLower.includes('terbaru') || qLower.includes('paling baru')) {
+            const subject = qLower.includes('paten') ? 'Paten' : (qLower.includes('hak cipta') ? 'Hak Cipta' : 'data');
+            const where = subject !== 'data' ? `jenis_ki LIKE '%${subject}%'` : '1=1';
+            return {
+                intent: 'DATABASE_QUERY',
+                database_hint: 'itb_db',
+                sql: `SELECT * FROM kekayaan_intelektual WHERE ${where} ORDER BY tgl_pendaftaran DESC LIMIT 10`,
+                confidence: 0.85
+            };
+        }
+
+        // === YEAR PATTERN (itb_db) ===
         const yearPattern = /(?:\b(ki|paten|hak cipta|merek|data)\b)?.*?\b(20\d{2}|19\d{2})\b/i;
         const yearMatch = qLower.match(yearPattern);
         
         const hasCountWord = /\b(berapa|total|jumlah|banyak)\b/i.test(qLower);
         const hasSubject = !!yearMatch?.[1];
         const isShortYear = /^\d{4}$/.test(qLower);
-        const hasHelper = /\b(yang|coba|deh|tahun|thn)\b/i.test(qLower);
+        const hasHelper = /\b(yang|coba|deh|tahun|thn|data)\b/i.test(qLower);
 
         if (yearMatch && (hasSubject || isShortYear || hasHelper)) {
             const subject = yearMatch[1]?.toLowerCase() || 'data';
@@ -143,6 +192,16 @@ class AIOrchestrator {
                 action: 'DATABASE_QUERY',
                 targetDb: 'itb_db'
             };
+        }
+
+        // === LATE CATCH-ALL CONFIRMATION (ONLY IF SHORT) ===
+        // If it was long and had "tampilkan", it might be a new search, so let AI handle it.
+        if (qLower.length < 35 && this.CONFIRM_YES.test(qLower)) {
+            // Check if it's purely confirmation or has too many words
+            const words = qLower.split(/\s+/).length;
+            if (words <= 5) {
+                return { intent: 'CONFIRMATION', value: true, confidence: 0.90 };
+            }
         }
 
         return null;
@@ -228,6 +287,9 @@ PERINGATAN KERAS (ANTI-HALUSINASI):
    - Jika user berkata "tampilkan", "daftar", "siapa saja", "apa saja", "lihat", atau "data", kamu WAJIB gunakan 'SELECT *'.
    - Hanya gunakan 'SELECT COUNT(*)' JIKA user bertanya "berapa", "jumlah", "total", atau "banyak".
    - JANGAN menawarkan ringkasan jika user sudah minta "lihat data". Langsung tampilkan datanya.
+8. **DATABASE ROUTING**: 
+   - Jika user menyebutkan nama database secara eksplisit (misal: "di ujicoba", "database itb_db"), kamu WAJIB mengarahkan 'database_hint' ke database tersebut dan mencari tabel di dalam database itu.
+   - Abaikan konteks database terakhir jika user menyebutkan database baru.
 
 ---
 
@@ -268,6 +330,7 @@ ATURAN PENTING (GROUNDING & ACCURACY):
   "transformed_query": "Instruksi bersih"
 }
 
+PERINGATAN ROUTING: Jika user bilang "di database X", maka "database_hint" HARUS "X".
 PERINGATAN AKURASI SEARCH: 
 - User sering mengetik: "liatkan data ki yang Erika yuni coba"
 - SQL yang BENAR: SELECT * FROM kekayaan_intelektual WHERE inventor LIKE '%Erika%Yuni%'
@@ -276,13 +339,15 @@ PERINGATAN AKURASI SEARCH:
         return prompt;
     }
 
-    parseAIResponse(text) {
+    parseAIResponse(text, query = "") {
         if (!text) return null;
         try {
             let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
             const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+                const parsed = JSON.parse(jsonMatch[0]);
+                
+                return parsed;
             }
         } catch (e) {
             console.error('AI Orchestrator: Failed to parse AI response:', e.message);

@@ -41,7 +41,19 @@ class SQLValidator {
 
         // 2. CEK TABEL — apakah semua tabel yang direferensikan ada di schema?
         const validTables = Object.keys(schema);
-        const referencedTables = this.extractTables(sql);
+        let referencedTables = this.extractTables(sql);
+
+        // Normalize referenced tables (strip db prefix like itb_db.table)
+        referencedTables = referencedTables.map(table => {
+            if (table.includes('.')) {
+                const parts = table.split('.');
+                const cleanName = parts.pop();
+                // If it matched db.table or public.table, fix it in SQL
+                fixedSQL = fixedSQL.replace(new RegExp(`\\b${this.escapeRegex(table)}\\b`, 'g'), cleanName);
+                return cleanName;
+            }
+            return table;
+        });
 
         for (const table of referencedTables) {
             if (!validTables.includes(table)) {
@@ -174,22 +186,15 @@ class SQLValidator {
     }
 
     /**
-     * EXTRACT nama tabel dari SQL
+     * EXTRACT nama tabel dari SQL (mendukung db.table)
      */
     extractTables(sql) {
         const tables = new Set();
-
-        // FROM clause
-        const fromMatches = sql.match(/\bFROM\s+`?(\w+)`?/gi) || [];
+        // Regex untuk menangkap nama tabel, termasuk yang ada prefix database (misal: itb_db.kekayaan_intelektual)
+        const fromMatches = sql.match(/\b(?:FROM|JOIN)\s+(?:`?([\w.]+?)`?)\b/gi) || [];
+        
         for (const m of fromMatches) {
-            const name = m.replace(/\bFROM\s+`?/i, '').replace(/`/g, '').trim();
-            if (name && !this.isSQLKeyword(name)) tables.add(name);
-        }
-
-        // JOIN clause
-        const joinMatches = sql.match(/\bJOIN\s+`?(\w+)`?/gi) || [];
-        for (const m of joinMatches) {
-            const name = m.replace(/\bJOIN\s+`?/i, '').replace(/`/g, '').trim();
+            const name = m.replace(/\b(?:FROM|JOIN)\s+`?/i, '').replace(/`/g, '').trim();
             if (name && !this.isSQLKeyword(name)) tables.add(name);
         }
 

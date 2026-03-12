@@ -1,119 +1,119 @@
 {
   "cache": [
     [
-      "siapa inventor ki paten",
-      {
-        "sql": "SELECT inventor FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Paten%'",
-        "database": "itb_db",
-        "total": 628,
-        "originalQuestion": "Siapa inventor KI paten?",
-        "timestamp": 1773266790567,
-        "hitCount": 0
-      }
-    ],
-    [
-      "coba yang hak cipta nya",
-      {
-        "sql": "SELECT inventor FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Hak Cipta%'",
-        "database": "itb_db",
-        "total": 463,
-        "originalQuestion": "coba yang hak cipta nya",
-        "timestamp": 1773266847096,
-        "hitCount": 0
-      }
-    ],
-    [
-      "tampilkan data ki yang 2021 ya",
-      {
-        "sql": "SELECT inventor FROM kekayaan_intelektual WHERE jenis_ki LIKE '%Hak Cipta%' LIMIT 10 OFFSET 0",
-        "database": "itb_db",
-        "total": 463,
-        "originalQuestion": "tampilkan data ki yang 2021 ya",
-        "timestamp": 1773266891280,
-        "hitCount": 0
-      }
-    ],
-    [
       "berapa jenis ki",
       {
-        "sql": "SELECT DISTINCT jenis_ki FROM kekayaan_intelektual",
+        "sql": "SELECT DISTINCT jenis_ki FROM kekayaan_intelektual LIMIT 10",
         "database": "itb_db",
         "total": 4,
-        "originalQuestion": "ada berapa jenis ki?",
-        "timestamp": 1773266947269,
+        "originalQuestion": "ada berapa jenis ki??",
+        "timestamp": 1773352134473,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan ki yang paling terbaru",
+      "tampilkan kan data yang hak cipta ya",
       {
         "sql": "SELECT DISTINCT jenis_ki FROM kekayaan_intelektual LIMIT 10 OFFSET 0",
         "database": "itb_db",
         "total": 4,
-        "originalQuestion": "tampilkan ki yang paling terbaru",
-        "timestamp": 1773266999805,
+        "originalQuestion": "tampilkan kan data yang hak cipta ya",
+        "timestamp": 1773352172186,
         "hitCount": 0
       }
     ],
     [
-      "seputar informasi ujicobaada siapa saja si anggota nua",
+      "apa yang bisa kamu berikan di ujicoba",
       {
         "sql": "SELECT * FROM anggota LIMIT 10",
         "database": "ujicoba",
         "total": 4,
-        "originalQuestion": "seputar informasi ujicoba,ada siapa saja si Anggota nua?",
-        "timestamp": 1773267168681,
+        "originalQuestion": "apa yang bisa kamu berikan di ujicoba",
+        "timestamp": 1773352226605,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan nama dan email nua saja ya",
+      "tampilkan nama dan email nya aja ya",
       {
-        "sql": "SELECT * FROM anggota LIMIT 10",
+        "sql": "SELECT * FROM anggota LIMIT 10 OFFSET 0",
         "database": "ujicoba",
         "total": 4,
-        "originalQuestion": "tampilkan nama dan email nua saja ya",
-        "timestamp": 1773267242393,
+        "originalQuestion": "liatkan nama dan email nya aja ya",
+        "timestamp": 1773353021687,
         "hitCount": 0
       }
     ],
     [
-      "tampilkan saja langsung data nya kan saya tadi minta nya gitu",
+      "berapa si berapa ki yang 2021",
       {
-        "sql": "SELECT * FROM anggota LIMIT 10",
-        "database": "ujicoba",
-        "total": 4,
-        "originalQuestion": "tampilkan saja langsung data nya kan saya tadi minta nya gitu",
-        "timestamp": 1773267282190,
-        "hitCount": 0
-      }
-    ],
-    [
-      "berapa fakultas di ki",
-      {
-        "sql": "SELECT COUNT(DISTINCT fakultas_inventor) as jumlah_fakultas FROM kekayaan_intelektual WHERE fakultas_inventor IS NOT NULL AND fakultas_inventor <> ''",
+        "sql": "SELECT COUNT(*) AS total FROM kekayaan_intelektual WHERE (tgl_pendaftaran LIKE '%2021%') LIMIT 10 OFFSET 0",
         "database": "itb_db",
-        "total": 1,
-        "originalQuestion": "ada berapa fakultas di ki?",
-        "timestamp": 1773267375864,
+        "total": 157,
+        "originalQuestion": "ada berapa si total ki yang 2021??",
+        "timestamp": 1773353049042,
         "hitCount": 0
       }
     ],
     [
-      "berapa berapa semua ki",
+      "tampilkan data nya ya",
       {
-        "sql": "SELECT COUNT(*) as total FROM kekayaan_intelektual",
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE (tgl_pendaftaran LIKE '%2021%') LIMIT 10 OFFSET 0",
         "database": "itb_db",
-        "total": 1353,
-        "originalQuestion": "berapa total semua ki?",
-        "timestamp": 1773267495289,
+        "total": 157,
+        "originalQuestion": "liatkan data nya ya",
+        "timestamp": 1773353070344,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data ki yang eko mursito",
+      {
+        "sql": "SELECT * FROM kekayaan_intelektual WHERE (tgl_pendaftaran LIKE '%2021%') LIMIT 10 OFFSET 0",
+        "database": "itb_db",
+        "total": 157,
+        "originalQuestion": "tampilkan data ki yang eko mursito",
+        "timestamp": 1773353118119,
+        "hitCount": 0
+      }
+    ],
+    [
+      "informasi apa yang bisa kamu berikan di perusahaan-perusahaan profesional",
+      {
+        "sql": "SELECT * FROM karyawan LIMIT 10",
+        "database": "perusahaan_profesional_db",
+        "total": 3,
+        "originalQuestion": "informasi apa yang bisa kamu berikan di Perusahaan-perusahaan profesional?",
+        "timestamp": 1773353196470,
+        "hitCount": 0
+      }
+    ],
+    [
+      "jadikan dashboard dan cetak pdf ya",
+      {
+        "sql": "SELECT * FROM karyawan LIMIT 10 OFFSET 0",
+        "database": "perusahaan_profesional_db",
+        "total": 3,
+        "originalQuestion": "jadikan Dashboard dan cetak pdf ya",
+        "timestamp": 1773353237732,
+        "hitCount": 0
+      }
+    ],
+    [
+      "tampilkan data ki tang 2019",
+      {
+        "sql": "SELECT * FROM karyawan LIMIT 10 OFFSET 0",
+        "database": "perusahaan_profesional_db",
+        "total": 3,
+        "originalQuestion": "tampilkan data ki tang 2019",
+        "timestamp": 1773353285473,
         "hitCount": 0
       }
     ]
   ],
   "stats": {
     "hits": 0,
-    "misses": 37
+    "misses": 40
   },
-  "lastSaved": 1773267495290
+  "lastSaved": 1773353285473
 }

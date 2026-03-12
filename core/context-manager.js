@@ -7,7 +7,7 @@ class ContextManager {
     constructor() {
         this.sessions = new Map();    // userId -> SessionState
         this.maxSessions = 1000;      // Maximum concurrent sessions
-        this.sessionTimeout = 30 * 60 * 1000; // 30 menit
+        this.sessionTimeout = 60 * 60 * 1000; // 1 Jam sesuai saran user
     }
 
     /**
@@ -51,11 +51,19 @@ class ContextManager {
 
         const prefix = `Waktu Sekarang: ${currentDateTime}\n\n`;
 
-        if (!history || !history.length) return prefix + "Percakapan baru.";
+        const persistenceGuide = `### IDENTITAS & ATURAN TETAP:
+- Anda adalah asisten database ITB.
+- Bahasa: Selalu gunakan Bahasa Indonesia yang ramah (Mas/Mbak).
+- Format: Gunakan daftar bernomor (1., 2., 3.) untuk hasil database.
+- Database Aktif: itb_db (KI/Paten), ujicoba (Karyawan/Anggota).
+---
+`;
 
-        const relevant = history.slice(-10).map(h => {
+        if (!history || !history.length) return persistenceGuide + prefix + "Percakapan baru.";
+
+        const relevant = history.slice(-25).map(h => {
             const role = h.role === "user" ? "User" : "Asisten";
-            const content = h.content?.slice(0, 300) || '';
+            const content = h.content?.slice(0, 400) || '';
             const timeLabel = h.timestamp && getRelativeTime ? ` (${getRelativeTime(h.timestamp)})` : '';
 
             let contextInfo = `${role}${timeLabel}: ${content}`;
@@ -66,7 +74,7 @@ class ContextManager {
             return contextInfo;
         });
 
-        return prefix + "Konteks Percakapan Sebelumnya:\n" + relevant.join('\n\n');
+        return persistenceGuide + prefix + "Konteks Percakapan Sebelumnya (25 Pesan Terakhir):\n" + relevant.join('\n\n');
     }
 
     /**
@@ -75,8 +83,19 @@ class ContextManager {
     cleanup() {
         const now = Date.now();
         for (const [userId, session] of this.sessions) {
-            if (now - session.lastActivity > this.sessionTimeout) {
+            const age = now - session.startTime;
+            const idleTime = now - session.lastActivity;
+
+            // 1. Hapus total jika idle terlalu lama
+            if (idleTime > this.sessionTimeout) {
                 this.sessions.delete(userId);
+            } 
+            // 2. Bersihkan riwayat jika sesi sudah berjalan > 1 jam (Saran User untuk Token)
+            else if (age > 60 * 60 * 1000 && session.conversationHistory.length > 5) {
+                console.log(`🧹 Cleaning history for user ${userId} due to session age (> 1hr)`);
+                // Sisakan 5 pesan terakhir agar tidak putus konteks total
+                session.conversationHistory = session.conversationHistory.slice(-5);
+                session.startTime = now; // Reset timer
             }
         }
     }
@@ -91,6 +110,7 @@ class SessionState {
         this.userId = userId;
         this.conversationHistory = [];
         this.lastActivity = Date.now();
+        this.startTime = Date.now(); // Catat waktu mulai sesi
 
         // === Current State ===
         this.currentTopic = null;          // Topik aktif saat ini

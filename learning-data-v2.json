@@ -715,6 +715,331 @@
             "lastUsed": 1773272955260,
             "confidence": 0.5
           }
+        ],
+        [
+          "haloo chatbot selamat pagii_itb_db",
+          {
+            "query": "haloo chatbot selamat pagii",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 12,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773287075304,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "data ki 2021 ya_itb_db",
+          {
+            "query": "data ki 2021 ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 40,
+            "avgExecutionTime": 65315,
+            "lastUsed": 1773287140618,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "yang 2022 coba_itb_db",
+          {
+            "query": "yang 2022 coba",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 164,
+            "avgExecutionTime": 69845,
+            "lastUsed": 1773287210463,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "informasi apa saja si yang ada di ujicoba??_itb_db",
+          {
+            "query": "informasi apa saja si yang ada di ujicoba??",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 164,
+            "avgExecutionTime": 79075,
+            "lastUsed": 1773287289538,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "data ki yang pekik argo ya_itb_db",
+          {
+            "query": "data ki yang pekik argo ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 79277,
+            "lastUsed": 1773288189737,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "data ki yang tersertifikasi_itb_db",
+          {
+            "query": "data ki yang tersertifikasi",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 2,
+            "avgResultCount": 502,
+            "avgExecutionTime": 1225731,
+            "lastUsed": 1773289450325,
+            "confidence": 0.55
+          }
+        ],
+        [
+          "tampilkan data yang ki yang pekik argo_itb_db",
+          {
+            "query": "tampilkan data yang ki yang pekik argo",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 2,
+            "avgResultCount": 502,
+            "avgExecutionTime": 693198,
+            "lastUsed": 1773290148039,
+            "confidence": 0.55
+          }
+        ],
+        [
+          "ada berapa si jenis ki??_itb_db",
+          {
+            "query": "ada berapa si jenis ki??",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1,
+            "avgExecutionTime": 64306,
+            "lastUsed": 1773300738313,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data yang tersertifikasi ya_itb_db",
+          {
+            "query": "tampilkan data yang tersertifikasi ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 2,
+            "avgResultCount": 502,
+            "avgExecutionTime": 232003,
+            "lastUsed": 1773320856737,
+            "confidence": 0.55
+          }
+        ],
+        [
+          "ada berapa jenis ki??_itb_db",
+          {
+            "query": "ada berapa jenis ki??",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 37320,
+            "lastUsed": 1773352135112,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan kan data yang hak cipta ya_itb_db",
+          {
+            "query": "tampilkan kan data yang hak cipta ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 37868,
+            "lastUsed": 1773352172980,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "apa yang bisa kamu berikan di ujicoba_ujicoba",
+          {
+            "query": "apa yang bisa kamu berikan di ujicoba",
+            "database": "ujicoba",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 54022,
+            "lastUsed": 1773352227002,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "liatkan nama dan email nya aja ya_ujicoba",
+          {
+            "query": "liatkan nama dan email nya aja ya",
+            "database": "ujicoba",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 795112,
+            "lastUsed": 1773353022114,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "ada berapa si total ki yang 2021??_itb_db",
+          {
+            "query": "ada berapa si total ki yang 2021??",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 27406,
+            "lastUsed": 1773353049520,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "liatkan data nya ya_itb_db",
+          {
+            "query": "liatkan data nya ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 24658,
+            "lastUsed": 1773353074178,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang eko mursito_itb_db",
+          {
+            "query": "tampilkan data ki yang eko mursito",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 48365,
+            "lastUsed": 1773353122543,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "informasi apa yang bisa kamu berikan di perusahaan-perusahaan profesional?_perusahaan_profesional_db",
+          {
+            "query": "informasi apa yang bisa kamu berikan di Perusahaan-perusahaan profesional?",
+            "database": "perusahaan_profesional_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 74586,
+            "lastUsed": 1773353197129,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "jadikan dashboard dan cetak pdf ya_perusahaan_profesional_db",
+          {
+            "query": "jadikan Dashboard dan cetak pdf ya",
+            "database": "perusahaan_profesional_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 41312,
+            "lastUsed": 1773353238441,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki tang 2019_perusahaan_profesional_db",
+          {
+            "query": "tampilkan data ki tang 2019",
+            "database": "perusahaan_profesional_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 3,
+            "avgExecutionTime": 47953,
+            "lastUsed": 1773353286394,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "saya mau data ki yang 2021 ya_itb_db",
+          {
+            "query": "saya mau data ki yang 2021 ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 42906,
+            "lastUsed": 1773357440450,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "pertanyaan rekomendasi yang no 2 ya_itb_db",
+          {
+            "query": "pertanyaan rekomendasi yang no 2 ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 157,
+            "avgExecutionTime": 75058,
+            "lastUsed": 1773357515506,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "ada berapa jenis ki si?_itb_db",
+          {
+            "query": "ada berapa jenis ki si?",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 4,
+            "avgExecutionTime": 57875,
+            "lastUsed": 1773357573381,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "bisa tampilkan data nua_itb_db",
+          {
+            "query": "bisa tampilkan data nua",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1353,
+            "avgExecutionTime": 28737,
+            "lastUsed": 1773357602118,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten ya_itb_db",
+          {
+            "query": "tampilkan data ki yang statusnya ajuan paten ya",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 1353,
+            "avgExecutionTime": 49726,
+            "lastUsed": 1773357651844,
+            "confidence": 0.5
+          }
+        ],
+        [
+          "ada berapa si ki yang 2016?_itb_db",
+          {
+            "query": "ada berapa si ki yang 2016?",
+            "database": "itb_db",
+            "intent": "DATABASE_QUERY",
+            "frequency": 1,
+            "avgResultCount": 21,
+            "avgExecutionTime": 65031,
+            "lastUsed": 1773357716875,
+            "confidence": 0.5
+          }
         ]
       ],
       "shortcuts": [
@@ -1260,6 +1585,281 @@
             "frequency": 1,
             "avgExecutionTime": 95997,
             "lastUsed": 1773272955260,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "haloo chatbot selamat pagii",
+          {
+            "query": "haloo chatbot selamat pagii",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 0,
+            "lastUsed": 1773287075304,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data ki 2021 ya",
+          {
+            "query": "data ki 2021 ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 65315,
+            "lastUsed": 1773287140618,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "yang 2022 coba",
+          {
+            "query": "yang 2022 coba",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 69845,
+            "lastUsed": 1773287210463,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "informasi apa saja si yang ada di ujicoba??",
+          {
+            "query": "informasi apa saja si yang ada di ujicoba??",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 79075,
+            "lastUsed": 1773287289538,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data ki yang pekik argo ya",
+          {
+            "query": "data ki yang pekik argo ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 79277,
+            "lastUsed": 1773288189737,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "data ki yang tersertifikasi",
+          {
+            "query": "data ki yang tersertifikasi",
+            "database": "itb_db",
+            "frequency": 2,
+            "avgExecutionTime": 1225731,
+            "lastUsed": 1773289450325,
+            "confidence": 0.44
+          }
+        ],
+        [
+          "tampilkan data yang ki yang pekik argo",
+          {
+            "query": "tampilkan data yang ki yang pekik argo",
+            "database": "itb_db",
+            "frequency": 2,
+            "avgExecutionTime": 693198,
+            "lastUsed": 1773290148039,
+            "confidence": 0.44
+          }
+        ],
+        [
+          "ada berapa si jenis ki??",
+          {
+            "query": "ada berapa si jenis ki??",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 64306,
+            "lastUsed": 1773300738313,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data yang tersertifikasi ya",
+          {
+            "query": "tampilkan data yang tersertifikasi ya",
+            "database": "itb_db",
+            "frequency": 2,
+            "avgExecutionTime": 232003,
+            "lastUsed": 1773320856737,
+            "confidence": 0.44
+          }
+        ],
+        [
+          "ada berapa jenis ki??",
+          {
+            "query": "ada berapa jenis ki??",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 37320,
+            "lastUsed": 1773352135112,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan kan data yang hak cipta ya",
+          {
+            "query": "tampilkan kan data yang hak cipta ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 37868,
+            "lastUsed": 1773352172980,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "apa yang bisa kamu berikan di ujicoba",
+          {
+            "query": "apa yang bisa kamu berikan di ujicoba",
+            "database": "ujicoba",
+            "frequency": 1,
+            "avgExecutionTime": 54022,
+            "lastUsed": 1773352227002,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "liatkan nama dan email nya aja ya",
+          {
+            "query": "liatkan nama dan email nya aja ya",
+            "database": "ujicoba",
+            "frequency": 1,
+            "avgExecutionTime": 795112,
+            "lastUsed": 1773353022114,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "ada berapa si total ki yang 2021??",
+          {
+            "query": "ada berapa si total ki yang 2021??",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 27406,
+            "lastUsed": 1773353049520,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "liatkan data nya ya",
+          {
+            "query": "liatkan data nya ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 24658,
+            "lastUsed": 1773353074178,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang eko mursito",
+          {
+            "query": "tampilkan data ki yang eko mursito",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 48365,
+            "lastUsed": 1773353122543,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "informasi apa yang bisa kamu berikan di perusahaan-perusahaan profesional?",
+          {
+            "query": "informasi apa yang bisa kamu berikan di Perusahaan-perusahaan profesional?",
+            "database": "perusahaan_profesional_db",
+            "frequency": 1,
+            "avgExecutionTime": 74586,
+            "lastUsed": 1773353197129,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "jadikan dashboard dan cetak pdf ya",
+          {
+            "query": "jadikan Dashboard dan cetak pdf ya",
+            "database": "perusahaan_profesional_db",
+            "frequency": 1,
+            "avgExecutionTime": 41312,
+            "lastUsed": 1773353238441,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki tang 2019",
+          {
+            "query": "tampilkan data ki tang 2019",
+            "database": "perusahaan_profesional_db",
+            "frequency": 1,
+            "avgExecutionTime": 47953,
+            "lastUsed": 1773353286394,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "saya mau data ki yang 2021 ya",
+          {
+            "query": "saya mau data ki yang 2021 ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 42906,
+            "lastUsed": 1773357440450,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "pertanyaan rekomendasi yang no 2 ya",
+          {
+            "query": "pertanyaan rekomendasi yang no 2 ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 75058,
+            "lastUsed": 1773357515506,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "ada berapa jenis ki si?",
+          {
+            "query": "ada berapa jenis ki si?",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 57875,
+            "lastUsed": 1773357573381,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "bisa tampilkan data nua",
+          {
+            "query": "bisa tampilkan data nua",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 28737,
+            "lastUsed": 1773357602118,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten ya",
+          {
+            "query": "tampilkan data ki yang statusnya ajuan paten ya",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 49726,
+            "lastUsed": 1773357651844,
+            "confidence": 0.3
+          }
+        ],
+        [
+          "ada berapa si ki yang 2016?",
+          {
+            "query": "ada berapa si ki yang 2016?",
+            "database": "itb_db",
+            "frequency": 1,
+            "avgExecutionTime": 65031,
+            "lastUsed": 1773357716875,
             "confidence": 0.3
           }
         ]
@@ -1913,6 +2513,331 @@
             ],
             "totalQueries": 1
           }
+        ],
+        [
+          "haloo chatbot selamat pagii",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773287075304
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data ki 2021 ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773287140618
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "yang 2022 coba",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773287210463
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "informasi apa saja si yang ada di ujicoba??",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773287289538
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data ki yang pekik argo ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773288189737
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "data ki yang tersertifikasi",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 2.5,
+                "lastUsed": 1773289450325
+              }
+            ],
+            "totalQueries": 2
+          }
+        ],
+        [
+          "tampilkan data yang ki yang pekik argo",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 2.5,
+                "lastUsed": 1773290148039
+              }
+            ],
+            "totalQueries": 2
+          }
+        ],
+        [
+          "ada berapa si jenis ki??",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773300738313
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data yang tersertifikasi ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 2.5,
+                "lastUsed": 1773320856737
+              }
+            ],
+            "totalQueries": 2
+          }
+        ],
+        [
+          "ada berapa jenis ki??",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773352135112
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan kan data yang hak cipta ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773352172980
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "apa yang bisa kamu berikan di ujicoba",
+          {
+            "databases": [
+              {
+                "name": "ujicoba",
+                "score": 1,
+                "lastUsed": 1773352227002
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "liatkan nama dan email nya aja ya",
+          {
+            "databases": [
+              {
+                "name": "ujicoba",
+                "score": 1,
+                "lastUsed": 1773353022114
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "ada berapa si total ki yang 2021??",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773353049520
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "liatkan data nya ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773353074178
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang eko mursito",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773353122543
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "informasi apa yang bisa kamu berikan di perusahaan-perusahaan profesional?",
+          {
+            "databases": [
+              {
+                "name": "perusahaan_profesional_db",
+                "score": 1,
+                "lastUsed": 1773353197129
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "jadikan dashboard dan cetak pdf ya",
+          {
+            "databases": [
+              {
+                "name": "perusahaan_profesional_db",
+                "score": 1,
+                "lastUsed": 1773353238441
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki tang 2019",
+          {
+            "databases": [
+              {
+                "name": "perusahaan_profesional_db",
+                "score": 1,
+                "lastUsed": 1773353286394
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "saya mau data ki yang 2021 ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357440450
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "pertanyaan rekomendasi yang no 2 ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357515506
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "ada berapa jenis ki si?",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357573381
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "bisa tampilkan data nua",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357602118
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "tampilkan data ki yang statusnya ajuan paten ya",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357651844
+              }
+            ],
+            "totalQueries": 1
+          }
+        ],
+        [
+          "ada berapa si ki yang 2016?",
+          {
+            "databases": [
+              {
+                "name": "itb_db",
+                "score": 1,
+                "lastUsed": 1773357716875
+              }
+            ],
+            "totalQueries": 1
+          }
         ]
       ],
       "feedback": [],
@@ -1960,6 +2885,41 @@
               }
             ],
             "frequency": 1
+          }
+        ],
+        [
+          "haiii chatbot_itb_db",
+          {
+            "query": "haiii chatbot",
+            "database": "itb_db",
+            "errors": [
+              {
+                "type": "DATABASE_ERROR",
+                "message": "Table 'itb_db.ki' doesn't exist",
+                "timestamp": 1773288109635
+              }
+            ],
+            "frequency": 1
+          }
+        ],
+        [
+          "bisa tampilkan data nya ada apa saja?_itb_db",
+          {
+            "query": "bisa tampilkan data nya ada apa saja?",
+            "database": "itb_db",
+            "errors": [
+              {
+                "type": "DATABASE_ERROR",
+                "message": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'SELECT * FROM ujicoba LIMIT 10;\nSELECT * FROM perusahaan_profesional_db LIMIT 10' at line 2",
+                "timestamp": 1773300878857
+              },
+              {
+                "type": "DATABASE_ERROR",
+                "message": "Unknown database 'public'",
+                "timestamp": 1773300953687
+              }
+            ],
+            "frequency": 2
           }
         ]
       ]
@@ -2622,5 +3582,5 @@
       "errors": []
     }
   ],
-  "lastSaved": 1773284995813
+  "lastSaved": 1773358402505
 }

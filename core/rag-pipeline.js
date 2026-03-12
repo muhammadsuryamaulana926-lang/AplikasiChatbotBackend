@@ -89,28 +89,70 @@ class RAGPipeline {
         );
 
         let aiRaw = await this.aiHandler(prompt, 0, 0, 0.2);
-        let parsed = aiOrchestrator.parseAIResponse(aiRaw);
+        let parsed = aiOrchestrator.parseAIResponse(aiRaw, query);
 
-        // 4. RESCUE LOGIC (If AI fails/junk/429)
+        // 4. RESCUE LOGIC (If AI fails/junk/429) - DYNAMIC VERSION
         if (!parsed) {
-            debugLog('STAGE1_RESCUE', 'Main AI failed, trying minimalist rescue prompt...');
-            const rescuePrompt = `User tanya: "${query}"
-Database: itb_db (ki, paten), ujicoba (anggota).
-Tugas: Jawab DALAM JSON SAJA: {"intent":"DATABASE_QUERY","database_hint":"itb_db","sql":"SELECT * FROM ... LIMIT 10"}`;
+            debugLog('STAGE1_RESCUE', 'Main AI failed, trying dynamic rescue prompt...');
+            
+            // Build MUCH BETTER dynamic DB summary for rescue
+            const dbSummary = Object.keys(profiles).map(db => {
+                const p = profiles[db];
+                return `DB[${db}]: ${p.summary.substring(0, 500)}`;
+            }).join('\n');
 
-            aiRaw = await this.aiHandler(rescuePrompt, 0, 0, 0.1); // Try with lower temp
-            parsed = aiOrchestrator.parseAIResponse(aiRaw);
+            const rescuePrompt = `Tugas: Buat SQL sederhana untuk pertanyaan di bawah.
+User tanya: "${query}"
+Informasi Database & Tabel:
+${dbSummary}
+
+Instruksi: Jawab HANYA JSON: {"intent":"DATABASE_QUERY","database_hint":"[Nama DB]","sql":"SELECT * FROM [Nama Tabel] WHERE [Kolom] LIKE '%...%' LIMIT 10"}`;
+
+            try {
+                aiRaw = await this.aiHandler(rescuePrompt, 0, 0, 0.1); 
+                parsed = aiOrchestrator.parseAIResponse(aiRaw);
+            } catch (e) {
+                debugLog('RESCUE_FAILED', e.message);
+            }
+        }
+
+        // --- PHASE 7 HEURISTIC RESCUE (Last Resort if AI completely dead) ---
+        if (!parsed) {
+            debugLog('STAGE1_HEURISTIC_RESCUE', 'AI completely dead, trying keywords...');
+            const queryLower = query.toLowerCase();
+            const topDb = await databaseRouter.routeQuery(query, lastEntry?.lastDatabase);
+            const dbName = typeof topDb === 'object' ? topDb.database : topDb;
+            
+            if (dbName && profiles[dbName]) {
+                const schema = profiles[dbName].schema;
+                const firstTable = Object.keys(schema)[0];
+                if (firstTable) {
+                    const columns = schema[firstTable].columns.split(', ');
+                    // Try to finding a column that might be a name or title
+                    const bestCol = columns.find(c => ['judul', 'nama', 'name', 'judul_ki'].includes(c.toLowerCase()));
+                    if (bestCol) {
+                        parsed = {
+                            intent: 'DATABASE_QUERY',
+                            database_hint: dbName,
+                            sql: `SELECT * FROM ${firstTable} WHERE ${bestCol} LIKE '%${query.replace(/['"]/g, '')}%' LIMIT 10`
+                        };
+                    }
+                }
+            }
         }
 
         debugLog('STAGE1_AI', { query, parsed });
 
         if (!parsed) return null;
 
+        // 5. SMART ROUTING REFINEMENT (Phase 7)
+        const finalDb = await databaseRouter.routeQuery(query, lastEntry?.lastDatabase, parsed?.database_hint);
+
         return {
             intent: parsed.intent,
             action: parsed.action || null,
             sql: parsed.sql,
-            targetDb: parsed.database_hint,
+            targetDb: finalDb,
             targetColumns: parsed.target_columns,
             entities: parsed.entities,
             natural_response: parsed.natural_response,
@@ -123,6 +165,22 @@ Tugas: Jawab DALAM JSON SAJA: {"intent":"DATABASE_QUERY","database_hint":"itb_db
     // ════════════════════════════════════════════════════════════════
     async retrieve(sql, database, originalQuery = '') {
         if (!sql || !database) return { data: [], total: 0 };
+
+        // --- ENSURE SCHEMA CACHE ---
+        if ((!this.schemaCache || !this.schemaCache[database]) && this.ensureSchema) {
+            try {
+                const allActive = dbHelper.getAllActiveConnectionConfigs();
+                const conf = allActive.find(c => c.database === database);
+                if (conf) {
+                    const conn = await mysql.createConnection(conf);
+                    await this.ensureSchema(conn, database);
+                    await conn.end();
+                    debugLog('SCHEMA_FETCHED_ON_DEMAND', database);
+                }
+            } catch (e) {
+                debugLog('ENSURE_SCHEMA_FAIL', e.message);
+            }
+        }
 
         // --- SQL GUARD: PRE-VALIDATION ---
         sqlValidator.setSchemaCache(this.schemaCache);
@@ -201,6 +259,26 @@ Tugas: Jawab DALAM JSON SAJA: {"intent":"DATABASE_QUERY","database_hint":"itb_db
         }
     }
 
+    // Helper to translate technical columns to human labels
+    _getHumanLabel(key) {
+        const mapping = {
+            'no_permohonan': 'No. Permohonan',
+            'id_ki': 'ID KI',
+            'jenis_ki': 'Jenis KI',
+            'status_ki': 'Status KI',
+            'judul': 'Judul KI',
+            'tgl_pendaftaran': 'Tgl Pendaftaran',
+            'tgl_sertifikasi': 'Tgl Sertifikasi',
+            'fakultas_inventor': 'Fakultas',
+            'inventor': 'Inventor',
+            'status_dokumen': 'Status Dokumen',
+            'id_sertifikat': 'ID Sertifikat'
+        };
+        const k = key.toLowerCase();
+        if (mapping[k]) return mapping[k];
+        return k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
     // ════════════════════════════════════════════════════════════════
     // STAGE 3: GENERATE (Perfect Context Aware)
     // ════════════════════════════════════════════════════════════════
@@ -209,11 +287,13 @@ Tugas: Jawab DALAM JSON SAJA: {"intent":"DATABASE_QUERY","database_hint":"itb_db
 
         const keys = Object.keys(data[0]);
         // Support COUNT(*), count(1) etc in generation detection
-        const isCount = data.length === 1 && keys.length <= 2 && keys.some(k =>
-            ['total', 'jumlah', 'count'].includes(k.toLowerCase()) ||
-            k.toLowerCase().includes('count(') ||
-            k.toLowerCase().includes('total(')
-        );
+        const isCount = data.length === 1 && keys.length <= 2 && keys.some(k => {
+            const kl = k.toLowerCase();
+            return kl === 'total' || kl === 'jumlah' || kl === 'count' || 
+                   kl.includes('count(') || kl.includes('total(') || 
+                   (kl.includes('jumlah') && !kl.includes('nama')) ||
+                   kl.includes('total_');
+        });
 
         // CASE A: Handle simple Total Count queries separately to avoid "List Phrasing"
         if (isCount && !metadata.forceList) {
@@ -243,80 +323,93 @@ INSTRUKSI:
 
 6. **PELARANGAN JARGON**: DILARANG KERAS menggunakan kata-kata teknis seperti "REKAPITULASI", "STATISTIK", "AGGREGATION", "DATASET", atau "COLUMNS" dalam jawaban. Gunakan bahasa sehari-hari yang hangat.
 
+7. **PEMBERSIHAN DATA (HUMAN-FRIENDLY)**:
+   - Jika nilai mengandung underscore (pemeriksaan_formil, dsb), GANTI UNDERSCORE DENGAN SPASI dan KAPITALKAN (Pemeriksaan Formil).
+   - Jika status_dokumen adalah 'penerbitan_sertifikat', tuliskan 'Sertifikat Sudah Terbit'.
+   - Jika nilai adalah 'null', '-', atau kosong, tuliskan 'Data tidak tersedia'.
+
 Jawab sekarang:`;
-            return await this.aiHandler(prompt, 0, 0, 0.5);
+            let responseText;
+            try {
+                responseText = await this.aiHandler(prompt, 0, 0, 0.5);
+            } catch (e) {
+                debugLog('COUNT_AI_ERROR', e.message);
+            }
+            if (!responseText || responseText.length < 10) {
+                return `Berdasarkan database **${database}**, ditemukan total **${countValue}** data yang sesuai dengan pencarian Anda, Mas/Mbak. 😊`;
+            }
+            return responseText;
         }
 
         // CASE B: Handle Database List results
         const dataType = this._detectDataType(database, data);
-        const prompt = `Bertindaklah sebagai asisten cerdas yang ramah dan sangat rapi.
-Pertanyaan User: "${query}"
-Data: ${JSON.stringify(data.slice(0, 10))}
-Grand Total: ${total}
-Tipe Data: ${dataType}
+        
+        // PRE-PROCESS DATA: Clean technical junk before AI sees it
+        const cleanData = data.slice(0, 10).map(item => {
+            const newItem = {};
+            for (const [k, v] of Object.entries(item)) {
+                // Skip technical IDs unless relevant
+                if (['id', 'created_at', 'updated_at', 'tkt'].includes(k.toLowerCase())) continue;
+                
+                const label = this._getHumanLabel(k);
+                let val = v;
+                
+                // Special: Clean Inventor string
+                if (k.toLowerCase() === 'inventor' && typeof v === 'string') {
+                    val = v.replace(/<br\s*\/?>/gi, '; ').replace(/,\s+/g, '; ');
+                }
+                
+                // Unified null handling
+                if (val === null || val === 'null' || val === '' || val === '-') val = 'Data tidak tersedia';
+                
+                newItem[label] = val;
+            }
+            return newItem;
+        });
 
-INSTRUKSI JAWABAN:
-1. KALIMAT PEMBUKA: "Ditemukan ${total} data. Berikut adalah data yang relevan:"
-   - DILARANG KERAS menggunakan kata "REKAPITULASI", "STATISTIK", atau istilah teknis lain.
-2. FORMAT LIST: Gunakan format yang sangat lega dan ber-hierarki.
-   - Gunakan nomor tebal (**1.**, **2.**).
-   - Gunakan bullet point (•) untuk detail di bawah nomor.
-   - JANGAN menumpuk banyak nama orang dalam satu baris panjang. Jika ada lebih dari 2 orang, pecah menjadi baris-baris bullet.
-   - WAJIB memberikan baris kosong (double enter) ANTAR nomor.
-3. SEMBUNYIKAN DETAIL: 
-   - DILARANG menampilkan isi 'ABSTRAK' atau 'MITRA' di list ini. 
-   - Tulis di akhir: "Untuk melihat **Abstrak** atau **Mitra** secara lengkap, silakan ketik nomor urutnya ya, Mas/Mbak!"
-4. NAVIGASI: Jika Grand Total > 10, infokan: "Masih ada ${total - 10} data lagi. Ketik **'lanjut'** untuk melihat berikutnya."
-${metadata.forceList ? '5. PENTING: User ingin melihat DAFTAR LENGKAP, jangan diringkas.' : ''}
+        const prompt = `### PERAN
+Anda adalah asisten database ITB yang profesional dan ramah.
 
-TEMPLATE PER ITEM (ACUAN VISUAL VERTIKAL MUTLAK):
-- JIKA Tipe Data 'KEKAYAAN_INTELEKTUAL':
-  **[Nomor]. [IDENTITAS UTAMA]**
-  
-  • **No. Permohonan**: [no_permohonan]
-  
-  • **ID KI**: [id_ki]
-  
-  • **Jenis KI**: [jenis_ki]
-  
-  • **Status KI**: [status_ki]
+### DATA UNTUK DITAMPILKAN:
+${JSON.stringify(cleanData)}
 
-  • **Status Dokumen**: [status_dokumen]
-  
-  • **Fakultas**: [fakultas_inventor]
-  
-  • **Tgl Pendaftaran**: [tgl_pendaftaran]
-  
-  • **Tgl Sertifikasi**: [tgl_sertifikasi]
-  
-  • **Inventor**: 
-    - [Nama Orang 1]
-    - [Nama Orang 2]
+### INFORMASI TAMBAHAN:
+- Kata Kunci User: "${query}"
+- Total Data: ${total}
+- Database: ${database}
 
-  (Berikan baris ganda di sini sebelum nomor berikutnya)
+### INSTRUKSI FORMAT:
+Tampilkan data di atas sebagai daftar vertikal yang rapi. Ikuti aturan ini:
+1. Berikan nomor urut yang benar dan berurutan secara hitungan (1., 2., 3., dst.) pada setiap item. JANGAN beri angka 1 semua.
+2. Judul utama data harus di-bold.
+3. Gunakan bullet point (•) untuk detail di bawahnya.
+4. Satu baris HANYA untuk satu informasi.
+5. Gunakan baris kosong (double enter) antar nomor agar lega.
+6. JANGAN memunculkan teks "Berikut adalah rekomendasi pertanyaan".
 
-  *ATURAN FORMATTING KERAS:*
-  1. SATU BARIS HANYA UNTUK SATU POIN (•). DILARANG KERAS menulis dua poin atau lebih dalam satu baris horizontal yang sama.
-  2. Setiap poin (•) harus dipisahkan oleh 'Enter' (baris baru).
-  3. Hanya LABEL yang ditebalkan (Contoh: **Jenis KI**:), NILAINYA jangan ditebalkan.
-  4. Sembunyikan 'abstrak' dan 'mitra_kepemilikan'.
-  5. Jika user tanya "Siapa inventor...", maka [IDENTITAS UTAMA] adalah Nama Inventor.
-  6. Jika user tanya "Apa saja judul...", maka [IDENTITAS UTAMA] adalah Judul KI.
+### LABEL YANG DIGUNAKAN:
+Gunakan label: No. Permohonan, Jenis KI, Status KI, Status Dokumen, Fakultas, Tgl Pendaftaran.
 
-- JIKA Tipe Data 'UMUM' atau 'ANGGOTA_KARYAWAN':
-  **[Nomor]. [NAMA / IDENTITAS TERPENTING]**
-  • [Detail 1]: [Nilai]
-  • [Detail 2]: [Nilai]
-  
-  [Berikan jarak 1 baris antar nomor agar lega]
+### TEMPLATE VISUAL:
+[Nomor Urut]. **[Judul/Nama Data]**
+• **Judul KI**: [Nilai]
+• **No. Permohonan**: [Nilai]
+• **Jenis KI**: [Nilai]
+... dst
 
-Jawab sekarang secara rapi dan sangat detail:`;
+Jawab sekarang secara rapi:`;
 
-        const response = await this.aiHandler(prompt, 0, 0, 0.4);
+        let response;
+        try {
+            response = await this.aiHandler(prompt, 0, 0, 0.4);
+        } catch (e) {
+            debugLog('GENERATE_AI_ERROR', e.message);
+        }
         
         // Anti-Empty/Fallback logic: Jika AI mengembalikan pesan terlalu pendek atau gagal
         if (!response || response.length < 50) {
-            return this._fallbackFormat(data, total, dataType);
+            debugLog('USING_TECHNICAL_FALLBACK', 'AI response failed or too short');
+            return this._fallbackFormat(data, total, dataType, database);
         }
         return response;
     }
@@ -339,25 +432,34 @@ INSTRUKSI:
    3. ...
 
 Jawab sekarang:`;
-        const response = await this.aiHandler(prompt, 0, 0, 0.7);
-        return response || `Wah, maaf banget Mas/Mbak, data tentang '${query}' sepertinya belum tersedia di database ${database} kami saat ini. Coba cari dengan kata kunci lain ya!`;
+        try {
+            const response = await this.aiHandler(prompt, 0, 0, 0.7);
+            if (response) return response;
+        } catch (e) {
+            debugLog('NO_DATA_AI_ERROR', e.message);
+        }
+        
+        return `Wah, maaf banget Mas/Mbak, data tentang "**${query}**" sepertinya belum tersedia di database **${database}** kami saat ini. 😊\n\n💡 **Saran:** Coba cari dengan kata kunci yang lebih spesifik atau kategori lain.`;
     }
 
-    _fallbackFormat(data, total, dataType = 'data') {
-        let msg = `Ditemukan ${total} data ${dataType === 'KEKAYAAN_INTELEKTUAL' ? 'Kekayaan Intelektual (KI)' : ''}. Berikut adalah rinciannya:\n\n`;
+    _fallbackFormat(data, total, dataType = 'data', database = '') {
+        let msg = `🤖 **HASIL PENCIPTAAN DATA**\n`;
+        msg += `*(Pesan otomatis: AI sedang sibuk, menampilkan format teknis)*\n\n`;
+        msg += `Ditemukan **${total}** data pada database **${database || 'sistem'}**.\n\n`;
         
         data.slice(0, 5).forEach((item, i) => {
-            const title = item.judul || item.nama || item.name || Object.values(item)[1] || `Data ${i+1}`;
-            msg += `**${i+1}. ${String(title).toUpperCase()}**\n`;
-            Object.entries(item).forEach(([k, v]) => {
-                const keyLower = k.toLowerCase();
-                if (['id', 'abstrak', 'mitra_kepemilikan', 'created_at', 'updated_at'].includes(keyLower)) return;
-                msg += `• **${k}**: ${v}\n`;
-            });
+            msg += `${i + 1}. **${item.judul || item.nama || item.name || 'DATA DETAIL'}**\n`;
+            for (const [k, v] of Object.entries(item)) {
+                if (['id', 'created_at', 'updated_at', 'tkt'].includes(k.toLowerCase())) continue;
+                if (!v || v === 'null') continue;
+                msg += `• **${this._getHumanLabel(k)}**: ${String(v).substring(0, 100)}${String(v).length > 100 ? '...' : ''}\n`;
+            }
             msg += `\n`;
         });
 
-        if (total > 5) msg += `\n(Menampilkan 5 data pertama) Masih ada ${total - 5} data lagi. Ketik **'lanjut'** untuk melihat berikutnya.`;
+        if (total > 5) msg += `*...dan ${total - 5} data lainnya.*`;
+        
+        msg += `\n\n📊 Ketik "buat grafik" atau "cetak pdf" untuk mengolah data ini.`;
         return msg;
     }
 

@@ -23,6 +23,8 @@ const historyPool = mysql.createPool({
 
 let schemaCache = {};
 let longTermHistoryFetched = new Set();
+// Circuit Breaker for disabled/failing AI providers
+const circuitBreaker = new Map(); // providerName -> timestamp untill blocked
 
 const {
   formatDate,
@@ -56,7 +58,10 @@ class ChatbotHandler {
     databaseRouter.setAIHandler(this.askAI.bind(this));
     const allConfigs = dbHelper.getAllActiveConnectionConfigs();
     dbProfiler.setAIHandler(this.askAI.bind(this));
-    dbProfiler.profileDatabases(allConfigs).then(() => {
+    dbProfiler.profileDatabases(allConfigs).then((profiles) => {
+      for (const [db, p] of Object.entries(profiles)) {
+        if (p.schema) schemaCache[db] = p.schema;
+      }
       console.log('🚀 Phase 7: AI-First Agent is ready.');
     });
 
@@ -75,12 +80,10 @@ class ChatbotHandler {
       if (result && result.type === 'answer' && typeof result.message === 'string') {
         const session = contextManager.getSession(userId);
 
-        // Check if we should append recommendations (exclude closing/short thank yous)
-        const qTrim = question.trim().toLowerCase();
-        const closingKeywords = /\b(cukup|sudah|oke|ok|sip|siap|makasih|terimakasih|thanks|thx|terima kasih|selesai|udahan|bye|dah|sampai jumpa)\b/i;
-        const isClosing = (qTrim.length < 30 && closingKeywords.test(qTrim));
+        // Check if we should append recommendations (exclude conversation/closing)
+        const isConversation = result.isConversation;
 
-        if (!isClosing) {
+        if (!isConversation) {
           // Add tooltip for exports/charts if not already mentioned by AI
           const hasManyData = (result.data && result.data.length > 1);
           const hasVisualTip = result.message.includes('📊') || result.message.includes('grafik') || result.message.includes('chart');
@@ -170,7 +173,7 @@ class ChatbotHandler {
     debugLog('AI_UNDERSTANDING', understanding);
 
     // 1.0 PROACTIVE CONFIRMATION (Catch obvious flows even if AI missed intent)
-    if (lastEntry?.pendingOffer && /(tampilkan|lihat|liat|mana|ok|boleh|gas|tampil|iya)\b/i.test(qLower) && understanding?.intent !== 'CONFIRMATION') {
+    if (lastEntry?.pendingOffer && /(tampilkan|lihat|liat|mana|ok|boleh|gas|tampil|iya|apa saja|semua|daftar)\b/i.test(qLower) && understanding?.intent !== 'CONFIRMATION') {
         debugLog('PROACTIVE_CONFIRM_ENFORCED', lastEntry.pendingOffer);
         understanding = { intent: 'CONFIRMATION', value: true, confidence: 0.99 };
     }
@@ -182,7 +185,7 @@ class ChatbotHandler {
       const msg = understanding.natural_response || "Ada yang bisa saya bantu? 😊";
       this.addToContext(userId, "user", q);
       this.addToContext(userId, "assistant", msg);
-      return { type: "answer", message: msg };
+      return { type: "answer", message: msg, isConversation: true };
     }
 
     // 1.5 Handle CONFIRMATION (Follow up after Count/Summary)
@@ -266,6 +269,14 @@ class ChatbotHandler {
     // 3. Handle DATABASE_QUERY
     if (understanding.intent === 'DATABASE_QUERY' || (understanding.sql && understanding.sql.length > 10)) {
       let targetDb = understanding.targetDb || lastEntry?.lastDatabase || 'itb_db';
+      let isAmbiguous = false;
+      let alternatives = [];
+      
+      if (typeof targetDb === 'object') {
+        isAmbiguous = targetDb.isAmbiguous;
+        alternatives = targetDb.alternatives || [];
+        targetDb = targetDb.database;
+      }
       
       // AUTO_DETECT resolution
       if (targetDb === 'AUTO_DETECT' || understanding.database_hint === 'AUTO_DETECT') {
@@ -331,7 +342,12 @@ class ChatbotHandler {
         forceList: understanding.forceList
       });
 
-      const finalMsg = this.stripPromptLeak(naturalResponse);
+      let finalMsg = this.stripPromptLeak(naturalResponse);
+      
+      // Add Ambiguity Note (Phase 7 Fix)
+      if (isAmbiguous && alternatives.length > 0) {
+        finalMsg += `\n\n*(Catatan: Saya mencari di database '${targetDb}', tapi data juga mungkin ada di: ${alternatives.join(', ')}. Beritahu saya jika Mas/Mbak ingin saya cek ke sana!)*`;
+      }
       const isCount = this.isCountResult(retrieval.data);
       
       this.addToContext(userId, "user", q);
@@ -461,15 +477,27 @@ class ChatbotHandler {
 
   getApiConfigs() {
     const saved = apiKeysHelper.getEnabledApiKeys();
-    if (saved.length > 0) {
-      return saved.map(k => ({
+    const now = Date.now();
+    
+    // Filter out providers that are currently in "Circuit Open" state (cooldown)
+    const activeConfigs = saved.length > 0 ? saved.filter(k => {
+      const blockUntil = circuitBreaker.get(k.name) || 0;
+      return now > blockUntil;
+    }) : [];
+
+    if (activeConfigs.length > 0) {
+      return activeConfigs.map(k => ({
         ...k,
         key: k.apiKey,
         isGemini: k.provider === 'gemini',
         isCohere: k.provider === 'cohere',
-        isHF: k.provider === 'huggingface'
+        isHF: k.provider === 'huggingface',
+        // Common OpenAI-compatible providers
+        isStandardAI: ['groq', 'openrouter', 'mistral', 'deepseek', 'deepinfra'].includes(k.provider)
       }));
     }
+
+    // Default Fallback (Only use if no other enabled/healthy keys)
     return [
       {
         name: "Gemini", key: process.env.GEMINI_API_KEY,
@@ -482,10 +510,11 @@ class ChatbotHandler {
   async askAI(prompt, retry = 0, idx = 0, temp = 0.7) {
     const configs = this.getApiConfigs();
     if (!configs || idx >= configs.length) {
-      console.error('Semua AI provider gagal');
+      console.error('Semua AI provider gagal atau sedang dalam masa cooldown');
       return null;
     }
     const api = configs[idx];
+    const TIMEOUT_MS = 5000; // Reduced from 10s to 5s for faster failover
 
     try {
       let res;
@@ -493,18 +522,58 @@ class ChatbotHandler {
         res = await axios.post(api.url, {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: temp }
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
+        }, { headers: { 'Content-Type': 'application/json' }, timeout: TIMEOUT_MS });
         return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-      } else {
+      } else if (api.isCohere) {
+        // Special format for Cohere Chat API
+        // Cohere fails if prompt is empty string. Give it a generic fallback.
+        const coherePrompt = prompt || "Hello";
         res = await axios.post(api.url, {
+          message: coherePrompt,
+          model: api.model,
+          temperature: temp
+        }, { headers: { Authorization: `Bearer ${api.key}`, 'Content-Type': 'application/json' }, timeout: TIMEOUT_MS });
+        return res.data?.text || null;
+      } else if (api.isHF) {
+        // Special format for HuggingFace Inference API
+        res = await axios.post(api.url, {
+          inputs: prompt,
+          parameters: { temperature: temp, max_new_tokens: 1000 }
+        }, { headers: { Authorization: `Bearer ${api.key}`, 'Content-Type': 'application/json' }, timeout: TIMEOUT_MS });
+        
+        // HF typically returns an array of generated text
+        const output = res.data?.[0]?.generated_text || res.data?.generated_text || null;
+        // Clean up: Mistral often repeats the prompt, let's strip it if possible
+        return output ? output.replace(prompt, '').trim() : null;
+      } else {
+        // Standard OpenAI compatible format (Groq, OpenRouter, Mistral, DeepSeek, DeepInfra)
+        const requestData = {
           model: api.model,
           messages: [{ role: "user", content: prompt }],
           temperature: temp
-        }, { headers: { Authorization: `Bearer ${api.key}` }, timeout: 10000 });
+        };
+        
+        res = await axios.post(api.url, requestData, { 
+          headers: { Authorization: `Bearer ${api.key}`, 'Content-Type': 'application/json' }, 
+          timeout: TIMEOUT_MS 
+        });
         return res.data?.choices?.[0]?.message?.content || null;
       }
     } catch (e) {
-      debugLog(`AI_ERROR[${api.name}]`, e.message);
+      const errorStatus = e.response?.status;
+      const errorMessage = e.message;
+      const errorData = e.response?.data ? JSON.stringify(e.response.data).substring(0, 200) : 'No data';
+      
+      debugLog(`AI_ERROR[${api.name}]`, `Status: ${errorStatus || 'TIMEOUT'} - Msg: ${errorMessage} - Body: ${errorData}`);
+      
+      // If 429 (Rate Limit), 401 (Auth), or Timeout, put provider in cooldown
+      if (errorStatus === 429 || errorMessage.includes('timeout') || errorStatus === 503 || errorStatus === 401 || errorStatus === 402) {
+        // Mistral hits 429 fast on free tier, give it short cooldown. Auth uses longer cooldown
+        const cooldownTime = errorStatus === 401 || errorStatus === 402 ? 600000 : (api.provider === 'mistral' && errorStatus === 429 ? 30000 : 180000); // 10 mins for bad keys, 30s for mistral limit, 3 mins for others
+        circuitBreaker.set(api.name, Date.now() + cooldownTime);
+        console.warn(`🚨 Provider ${api.name} error (${errorStatus || 'TIMEOUT'}). Cooling down for ${cooldownTime/60000} mins.`);
+      }
+
       // Faster failover: no retry for same index, just move to next provider
       return this.askAI(prompt, 0, idx + 1, temp);
     }
@@ -512,27 +581,34 @@ class ChatbotHandler {
 
   stripPromptLeak(text) {
     if (!text || typeof text !== 'string') return text || '';
-    // Strip common system headers and meta-instructions that might leak
+        
+    // 1. Basic cleaning for prompt leaks
     let cleaned = text.replace(/^(Asisten|AI|Sistem|Berikut|Tentu|Baik|Daftar Lengkap|Struktur Jawaban|Instruksi|Template)(.*?)?:\s*/gi, '').trim();
-    
-    // Also remove AI "thinking" prefixes if they leak
-    cleaned = cleaned.replace(/^Sure, here is the list:|^Tentu, ini datanya:|^Ok, let me look that up:|^Berikut daftar/gi, '').trim();
-    
-    // Remove common placeholder artifacts
-    cleaned = cleaned.replace(/\[Nilai\]/g, '-').replace(/\[JUDUL.*?\]/g, '').replace(/\[IDENTITAS\/NAMA\]/g, '-');
-    
+    cleaned = cleaned.replace(/^Sure, here is the list:|^Tentu, ini datanya:|^Ok, let me look that up:|^Berikut daftar|^\[Nilai\]/gi, '').trim();
+    cleaned = cleaned.replace(/\[Nilai\]/g, '-').replace(/\[JUDUL.*?\]/g, '');
+
+    // 2. Fix AI being too creative with bolding numbers safely without breaking trailing asterisks
+    // e.g. **1. ** -> 1. **
+    cleaned = cleaned.replace(/^\s*\*+(\d+)\.\s*\*+/gm, '$1. **'); 
+    // e.g. **1. -> 1. 
+    cleaned = cleaned.replace(/^\s*\*+(\d+)\.\*+/gm, '$1. ');
+    // Handle bullet leakage 
+    cleaned = cleaned.replace(/^\s*•?\s*\*+([^*]+)\*\*+:/gm, '• **$1**:');
+
     return cleaned || text; 
   }
 
   isCountResult(data) {
     if (!data || data.length !== 1) return false;
     const keys = Object.keys(data[0]);
-    // Expand to handle COUNT(*), count(1), etc.
-    return keys.some(k => 
-      ['total', 'jumlah', 'count'].includes(k.toLowerCase()) || 
-      k.toLowerCase().includes('count(') || 
-      k.toLowerCase().includes('total(')
-    );
+    // Handle partial matches like "jumlah_jenis_ki" or "count_data"
+    return keys.some(k => {
+      const kl = k.toLowerCase();
+      return kl === 'total' || kl === 'jumlah' || kl === 'count' || 
+             kl.includes('count(') || kl.includes('total(') || 
+             (kl.includes('jumlah') && !kl.includes('nama')) || // Avoid "jumlah_nama" being count
+             kl.includes('total_');
+    });
   }
 
   isGroupByResult(data) {
@@ -587,9 +663,16 @@ Format: 1. [Pertanyaan]\n2. [Pertanyaan]\n3. [Pertanyaan]`;
 
       const aiRes = await this.askAI(prompt, 0, 0, 0.7);
       if (aiRes && aiRes.length > 5) {
-        const lines = aiRes.split('\n').map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(l => l.length > 2);
-        const formatted = lines.map((l, i) => `${i + 1}. ${l}`).join('\n');
-        return { text: formatted, array: lines.slice(0, 3) };
+        let lines = aiRes.split('\n')
+          .map(l => l.trim())
+          .filter(l => l.match(/^\d+\.\s+/) || l.match(/^- /) || l.match(/^• /))
+          .map(l => l.replace(/^[\d\.\-\•\s]+/, '').trim())
+          .filter(l => l.length > 2 && !l.toLowerCase().includes('berikut') && !l.toLowerCase().includes('rekomendasi'));
+          
+        if (lines.length > 0) {
+            const formatted = lines.slice(0, 3).map((l, i) => `${i + 1}. ${l}`).join('\n');
+            return { text: formatted, array: lines.slice(0, 3) };
+        }
       }
       // Fallback cerdas berdasarkan DB terakhir
       if (currentDb === 'itb_db') {

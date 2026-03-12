@@ -1627,3 +1627,26 @@ const shutdown = () => {
 process.on('SIGINT', shutdown);  // Ctrl+C
 process.on('SIGTERM', shutdown); // kill command
 process.on('SIGHUP', shutdown);  // Terminal ditutup
+
+// === GLOBAL ERROR HANDLERS ===
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 UNHANDLED_REJECTION:', reason);
+  const chatbotLogic = require('./chatbot-logic');
+  // Log to debug file if possible
+  try {
+    const fs = require('fs');
+    fs.appendFileSync('debug_sql_out.txt', `\n[${new Date().toISOString()}] UNHANDLED_REJECTION: ${reason}`);
+  } catch (e) {}
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('🚨 UNCAUGHT_EXCEPTION:', err);
+  try {
+    const fs = require('fs');
+    fs.appendFileSync('debug_sql_out.txt', `\n[${new Date().toISOString()}] UNCAUGHT_EXCEPTION: ${err.stack}`);
+  } catch (e) {}
+  // Don't exit immediately if it's just an AI error
+  if (!err.message.includes('AI')) {
+    process.exit(1);
+  }
+});
